@@ -1281,16 +1281,15 @@ import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.testcontainers.containers.PostgreSQLContainer
-import org.testcontainers.junit.jupiter.Container
-import org.testcontainers.junit.jupiter.Testcontainers
 import org.testcontainers.utility.DockerImageName
 
-@Testcontainers
+// Manual @BeforeAll/@AfterAll lifecycle: do NOT use the @Testcontainers extension or @Container
+// annotation here. With @TestInstance(PER_CLASS) those would re-create the container per test method,
+// dropping the migrated/seeded state set up in @BeforeAll.
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class InventoryLoaderTest {
 
-    @Container
-    val postgres: PostgreSQLContainer<*> = PostgreSQLContainer(DockerImageName.parse("postgres:16-alpine"))
+    private val postgres: PostgreSQLContainer<*> = PostgreSQLContainer(DockerImageName.parse("postgres:16-alpine"))
         .withDatabaseName("kotlin_ad_server_test")
         .withUsername("test")
         .withPassword("test")
@@ -2927,16 +2926,14 @@ import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.testcontainers.containers.PostgreSQLContainer
-import org.testcontainers.junit.jupiter.Container
-import org.testcontainers.junit.jupiter.Testcontainers
 import org.testcontainers.utility.DockerImageName
 
-@Testcontainers
+// Manual @BeforeAll/@AfterAll lifecycle: do NOT use @Testcontainers/@Container — see
+// InventoryLoaderTest in Task 9 for the rationale (PER_CLASS + @Container interact badly).
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class BidRouteIntegrationTest {
 
-    @Container
-    val postgres: PostgreSQLContainer<*> = PostgreSQLContainer(DockerImageName.parse("postgres:16-alpine"))
+    private val postgres: PostgreSQLContainer<*> = PostgreSQLContainer(DockerImageName.parse("postgres:16-alpine"))
         .withDatabaseName("kotlin_ad_server_test")
         .withUsername("test")
         .withPassword("test")
