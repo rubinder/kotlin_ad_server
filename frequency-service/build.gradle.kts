@@ -31,4 +31,5 @@ dependencies {
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(platform(libs.testcontainers.bom))
     testImplementation(libs.testcontainers.junit)
+    testImplementation(libs.grpc.inprocess)
 }
