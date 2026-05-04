@@ -455,7 +455,7 @@ git commit -m "Phase 2 task 4: frequency-service module setup (Lettuce + grpc-ne
 - Create: `frequency-service/src/test/kotlin/com/github/robran/adserver/frequency/RedisClientTest.kt`
 - Create: `frequency-service/src/test/resources/logback-test.xml`
 
-The `RedisClient` is a thin facade over Lettuce that exposes the few operations the read-side service needs as `suspend` functions. We use Lettuce's reactive API and bridge to coroutines via `kotlinx-coroutines-reactor`'s `awaitFirstOrNull` / `awaitSingle`.
+The `RedisClient` is a thin facade over Lettuce that exposes the few operations the read-side service needs as `suspend` functions. We use Lettuce's reactive API and bridge to coroutines via `kotlinx-coroutines-reactor`'s `awaitSingleOrNull` / `awaitSingle`.
 
 - [ ] **Step 1: Write `logback-test.xml`**
 
@@ -575,7 +575,7 @@ import io.lettuce.core.Range
 import io.lettuce.core.RedisURI
 import io.lettuce.core.api.StatefulRedisConnection
 import io.lettuce.core.api.reactive.RedisReactiveCommands
-import kotlinx.coroutines.reactor.awaitFirstOrNull
+import kotlinx.coroutines.reactor.awaitSingleOrNull
 import kotlinx.coroutines.reactor.awaitSingle
 import org.slf4j.LoggerFactory
 import io.lettuce.core.RedisClient as LettuceClient
@@ -594,7 +594,7 @@ class RedisClient(
     private val cmd: RedisReactiveCommands<String, String> = connection.reactive()
 
     suspend fun get(key: String): String? =
-        cmd.get(key).awaitFirstOrNull()
+        cmd.get(key).awaitSingleOrNull()
 
     suspend fun set(key: String, value: String): String =
         cmd.set(key, value).awaitSingle()
