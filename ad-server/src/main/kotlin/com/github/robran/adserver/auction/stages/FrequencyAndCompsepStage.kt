@@ -15,7 +15,10 @@ import com.github.robran.adserver.auction.RuleStage
  * Empty input short-circuits — no need to call the client.
  */
 class FrequencyAndCompsepStage(private val frequencyClient: FrequencyClient) : RuleStage {
-    override suspend fun evaluate(ctx: AuctionContext, candidates: List<Candidate>): List<Candidate> {
+    override suspend fun evaluate(
+        ctx: AuctionContext,
+        candidates: List<Candidate>,
+    ): List<Candidate> {
         if (candidates.isEmpty()) return emptyList()
         val campaignIds = candidates.map { it.campaign.id }
         val enrich = frequencyClient.enrich(ctx.userId, campaignIds)

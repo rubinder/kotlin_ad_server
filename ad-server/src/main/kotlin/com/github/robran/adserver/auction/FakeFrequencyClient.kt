@@ -9,6 +9,8 @@ class FakeFrequencyClient(
     private val counts: Map<String, Int> = emptyMap(),
     private val recentCategories: Set<String> = emptySet(),
 ) : FrequencyClient {
-    override suspend fun enrich(userId: String, campaignIds: List<String>): EnrichResult =
-        EnrichResult(freqCounts = counts, recentCategories = recentCategories)
+    override suspend fun enrich(
+        userId: String,
+        campaignIds: List<String>,
+    ): EnrichResult = EnrichResult(freqCounts = counts, recentCategories = recentCategories)
 }

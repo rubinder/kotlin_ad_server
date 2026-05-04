@@ -9,7 +9,10 @@ import com.github.robran.adserver.auction.RuleStage
  * "At or above" wins (i.e., bid >= floor → keep). USD only in this phase.
  */
 class FloorPriceStage : RuleStage {
-    override suspend fun evaluate(ctx: AuctionContext, candidates: List<Candidate>): List<Candidate> {
+    override suspend fun evaluate(
+        ctx: AuctionContext,
+        candidates: List<Candidate>,
+    ): List<Candidate> {
         val floor = ctx.imp.bidfloor
         if (floor <= 0.0) return candidates
         return candidates.filter { it.bidPrice >= floor }

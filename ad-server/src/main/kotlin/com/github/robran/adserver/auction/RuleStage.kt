@@ -10,5 +10,8 @@ package com.github.robran.adserver.auction
  * Phase 1 stages are CPU-only but signed `suspend` for forward compatibility.
  */
 fun interface RuleStage {
-    suspend fun evaluate(ctx: AuctionContext, candidates: List<Candidate>): List<Candidate>
+    suspend fun evaluate(
+        ctx: AuctionContext,
+        candidates: List<Candidate>,
+    ): List<Candidate>
 }

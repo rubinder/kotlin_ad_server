@@ -6,7 +6,10 @@ package com.github.robran.adserver.auction
  * gRPC client; Phase 1 uses [FakeFrequencyClient]. Suspending so the real impl can be async.
  */
 interface FrequencyClient {
-    suspend fun enrich(userId: String, campaignIds: List<String>): EnrichResult
+    suspend fun enrich(
+        userId: String,
+        campaignIds: List<String>,
+    ): EnrichResult
 }
 
 data class EnrichResult(

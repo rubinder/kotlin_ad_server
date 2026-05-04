@@ -16,83 +16,103 @@ import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Test
 
 class FrequencyAndCompsepStageTest {
-
-    private fun candidate(id: String, category: String, cap: Int = 5): Candidate {
-        val campaign = Campaign(
-            id = id, advertiserId = "adv", advertiserDomain = "x.example.com",
-            category = category, bidPrice = 1.0, frequencyCap = cap, active = true,
-            creatives = emptyList(),
-        )
+    private fun candidate(
+        id: String,
+        category: String,
+        cap: Int = 5,
+    ): Candidate {
+        val campaign =
+            Campaign(
+                id = id,
+                advertiserId = "adv",
+                advertiserDomain = "x.example.com",
+                category = category,
+                bidPrice = 1.0,
+                frequencyCap = cap,
+                active = true,
+                creatives = emptyList(),
+            )
         val creative = Creative(id = "$id-cre", campaignId = id, width = 300, height = 250, markup = "")
         return Candidate(campaign, creative)
     }
 
-    private val ctx = AuctionContext(
-        request = BidRequest(id = "r", imp = listOf(Imp(id = "1", banner = Banner(300, 250)))),
-        userId = "u",
-    )
-
-    @Test
-    fun `passes through when no caps hit and no recent categories`() = runTest {
-        val candidates = listOf(candidate("c1", "IAB1"), candidate("c2", "IAB2"))
-        val out = FrequencyAndCompsepStage(FakeFrequencyClient()).evaluate(ctx, candidates)
-        assertThat(out.map { it.campaign.id }).containsExactlyInAnyOrder("c1", "c2")
-    }
-
-    @Test
-    fun `drops candidates at or above their freq cap`() = runTest {
-        val candidates = listOf(
-            candidate("c1", "IAB1", cap = 5),    // count 5 → exactly at cap → drop
-            candidate("c2", "IAB2", cap = 5),    // count 4 → below cap → keep
-            candidate("c3", "IAB3", cap = 3),    // count 0 (missing) → keep
+    private val ctx =
+        AuctionContext(
+            request = BidRequest(id = "r", imp = listOf(Imp(id = "1", banner = Banner(300, 250)))),
+            userId = "u",
         )
-        val client = FakeFrequencyClient(counts = mapOf("c1" to 5, "c2" to 4))
-        val out = FrequencyAndCompsepStage(client).evaluate(ctx, candidates)
-        assertThat(out.map { it.campaign.id }).containsExactlyInAnyOrder("c2", "c3")
-    }
 
     @Test
-    fun `drops candidates whose category was recently served`() = runTest {
-        val candidates = listOf(
-            candidate("c1", "IAB1"),
-            candidate("c2", "IAB2"),
-            candidate("c3", "IAB3"),
-        )
-        val client = FakeFrequencyClient(recentCategories = setOf("IAB2"))
-        val out = FrequencyAndCompsepStage(client).evaluate(ctx, candidates)
-        assertThat(out.map { it.campaign.id }).containsExactlyInAnyOrder("c1", "c3")
-    }
-
-    @Test
-    fun `applies both filters in one pass`() = runTest {
-        val candidates = listOf(
-            candidate("c1", "IAB1", cap = 3),
-            candidate("c2", "IAB1", cap = 5),    // category blocked
-            candidate("c3", "IAB2", cap = 5),    // count over cap
-            candidate("c4", "IAB3", cap = 5),    // survives
-        )
-        val client = FakeFrequencyClient(
-            counts = mapOf("c3" to 7),
-            recentCategories = setOf("IAB1"),
-        )
-        val out = FrequencyAndCompsepStage(client).evaluate(ctx, candidates)
-        assertThat(out.map { it.campaign.id }).isEqualTo(listOf("c4"))
-    }
-
-    @Test
-    fun `empty candidate list short-circuits without calling the client`() = runTest {
-        var called = false
-        val tracker = object : com.github.robran.adserver.auction.FrequencyClient {
-            override suspend fun enrich(
-                userId: String,
-                campaignIds: List<String>,
-            ): com.github.robran.adserver.auction.EnrichResult {
-                called = true
-                return com.github.robran.adserver.auction.EnrichResult(emptyMap(), emptySet())
-            }
+    fun `passes through when no caps hit and no recent categories`() =
+        runTest {
+            val candidates = listOf(candidate("c1", "IAB1"), candidate("c2", "IAB2"))
+            val out = FrequencyAndCompsepStage(FakeFrequencyClient()).evaluate(ctx, candidates)
+            assertThat(out.map { it.campaign.id }).containsExactlyInAnyOrder("c1", "c2")
         }
-        val out = FrequencyAndCompsepStage(tracker).evaluate(ctx, emptyList())
-        assertThat(out).isEmpty()
-        assertThat(called).isEqualTo(false)
-    }
+
+    @Test
+    fun `drops candidates at or above their freq cap`() =
+        runTest {
+            val candidates =
+                listOf(
+                    candidate("c1", "IAB1", cap = 5), // count 5 → exactly at cap → drop
+                    candidate("c2", "IAB2", cap = 5), // count 4 → below cap → keep
+                    candidate("c3", "IAB3", cap = 3), // count 0 (missing) → keep
+                )
+            val client = FakeFrequencyClient(counts = mapOf("c1" to 5, "c2" to 4))
+            val out = FrequencyAndCompsepStage(client).evaluate(ctx, candidates)
+            assertThat(out.map { it.campaign.id }).containsExactlyInAnyOrder("c2", "c3")
+        }
+
+    @Test
+    fun `drops candidates whose category was recently served`() =
+        runTest {
+            val candidates =
+                listOf(
+                    candidate("c1", "IAB1"),
+                    candidate("c2", "IAB2"),
+                    candidate("c3", "IAB3"),
+                )
+            val client = FakeFrequencyClient(recentCategories = setOf("IAB2"))
+            val out = FrequencyAndCompsepStage(client).evaluate(ctx, candidates)
+            assertThat(out.map { it.campaign.id }).containsExactlyInAnyOrder("c1", "c3")
+        }
+
+    @Test
+    fun `applies both filters in one pass`() =
+        runTest {
+            val candidates =
+                listOf(
+                    candidate("c1", "IAB1", cap = 3),
+                    candidate("c2", "IAB1", cap = 5), // category blocked
+                    candidate("c3", "IAB2", cap = 5), // count over cap
+                    candidate("c4", "IAB3", cap = 5), // survives
+                )
+            val client =
+                FakeFrequencyClient(
+                    counts = mapOf("c3" to 7),
+                    recentCategories = setOf("IAB1"),
+                )
+            val out = FrequencyAndCompsepStage(client).evaluate(ctx, candidates)
+            assertThat(out.map { it.campaign.id }).isEqualTo(listOf("c4"))
+        }
+
+    @Test
+    fun `empty candidate list short-circuits without calling the client`() =
+        runTest {
+            var called = false
+            val tracker =
+                object : com.github.robran.adserver.auction.FrequencyClient {
+                    override suspend fun enrich(
+                        userId: String,
+                        campaignIds: List<String>,
+                    ): com.github.robran.adserver.auction.EnrichResult {
+                        called = true
+                        return com.github.robran.adserver.auction.EnrichResult(emptyMap(), emptySet())
+                    }
+                }
+            val out = FrequencyAndCompsepStage(tracker).evaluate(ctx, emptyList())
+            assertThat(out).isEmpty()
+            assertThat(called).isEqualTo(false)
+        }
 }

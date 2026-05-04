@@ -12,7 +12,10 @@ import kotlin.random.Random
  * Returns a list of size 0 or 1, never larger.
  */
 class SelectionStage(private val random: Random = Random.Default) : RuleStage {
-    override suspend fun evaluate(ctx: AuctionContext, candidates: List<Candidate>): List<Candidate> {
+    override suspend fun evaluate(
+        ctx: AuctionContext,
+        candidates: List<Candidate>,
+    ): List<Candidate> {
         if (candidates.isEmpty()) return emptyList()
         if (candidates.size == 1) return candidates
         val maxBid = candidates.maxOf { it.bidPrice }

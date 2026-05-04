@@ -10,7 +10,10 @@ import com.github.robran.adserver.auction.RuleStage
  * Pure in-memory predicate, no I/O.
  */
 class BlockingPolicyStage : RuleStage {
-    override suspend fun evaluate(ctx: AuctionContext, candidates: List<Candidate>): List<Candidate> {
+    override suspend fun evaluate(
+        ctx: AuctionContext,
+        candidates: List<Candidate>,
+    ): List<Candidate> {
         val bcat = ctx.request.bcat.toSet()
         val badv = ctx.request.badv.toSet()
         if (bcat.isEmpty() && badv.isEmpty()) return candidates

@@ -45,25 +45,27 @@ class AuctionPipeline(
         val winner = current.single()
         return BidResponse(
             id = request.id,
-            seatbid = listOf(
-                SeatBid(
-                    seat = winner.campaign.advertiserId,
-                    bid = listOf(
-                        Bid(
-                            id = UUID.randomUUID().toString(),
-                            impid = ctx.imp.id,
-                            price = winner.bidPrice,
-                            cid = winner.campaign.id,
-                            crid = winner.creative.id,
-                            adid = winner.creative.id,
-                            cat = listOf(winner.campaign.category),
-                            w = winner.creative.width,
-                            h = winner.creative.height,
-                            adm = winner.creative.markup,
-                        ),
+            seatbid =
+                listOf(
+                    SeatBid(
+                        seat = winner.campaign.advertiserId,
+                        bid =
+                            listOf(
+                                Bid(
+                                    id = UUID.randomUUID().toString(),
+                                    impid = ctx.imp.id,
+                                    price = winner.bidPrice,
+                                    cid = winner.campaign.id,
+                                    crid = winner.creative.id,
+                                    adid = winner.creative.id,
+                                    cat = listOf(winner.campaign.category),
+                                    w = winner.creative.width,
+                                    h = winner.creative.height,
+                                    adm = winner.creative.markup,
+                                ),
+                            ),
                     ),
                 ),
-            ),
         )
     }
 
@@ -72,10 +74,11 @@ class AuctionPipeline(
             ?: request.user?.buyeruid
             ?: "anonymous"
 
-    private fun noBidReasonFor(stageIndex: Int): Int = when (stageIndex) {
-        0 -> NoBidReason.NO_CANDIDATES_AFTER_BLOCKING
-        1 -> NoBidReason.NO_CANDIDATES_AFTER_FREQ_COMPSEP
-        2 -> NoBidReason.NO_CANDIDATES_AFTER_FLOOR
-        else -> NoBidReason.UNKNOWN_ERROR
-    }
+    private fun noBidReasonFor(stageIndex: Int): Int =
+        when (stageIndex) {
+            0 -> NoBidReason.NO_CANDIDATES_AFTER_BLOCKING
+            1 -> NoBidReason.NO_CANDIDATES_AFTER_FREQ_COMPSEP
+            2 -> NoBidReason.NO_CANDIDATES_AFTER_FLOOR
+            else -> NoBidReason.UNKNOWN_ERROR
+        }
 }
