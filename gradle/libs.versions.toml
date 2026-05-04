@@ -14,6 +14,13 @@ assertk = "0.28.1"
 ktlint-plugin = "12.1.1"
 config4k = "0.7.0"
 
+# Phase 2 additions
+grpc = "1.68.2"
+grpc-kotlin = "1.4.1"
+lettuce = "6.5.1.RELEASE"
+protobuf = "4.28.3"
+protobuf-plugin = "0.9.4"
+
 [libraries]
 # Kotlin
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
@@ -53,8 +60,21 @@ testcontainers-bom = { module = "org.testcontainers:testcontainers-bom", version
 testcontainers-junit = { module = "org.testcontainers:junit-jupiter" }
 testcontainers-postgres = { module = "org.testcontainers:postgresql" }
 
+# Phase 2: gRPC + protobuf
+grpc-netty-shaded = { module = "io.grpc:grpc-netty-shaded", version.ref = "grpc" }
+grpc-protobuf = { module = "io.grpc:grpc-protobuf", version.ref = "grpc" }
+grpc-stub = { module = "io.grpc:grpc-stub", version.ref = "grpc" }
+grpc-kotlin-stub = { module = "io.grpc:grpc-kotlin-stub", version.ref = "grpc-kotlin" }
+protobuf-java = { module = "com.google.protobuf:protobuf-java", version.ref = "protobuf" }
+protobuf-kotlin = { module = "com.google.protobuf:protobuf-kotlin", version.ref = "protobuf" }
+
+# Phase 2: Redis (Lettuce + reactor coroutines bridge)
+lettuce-core = { module = "io.lettuce:lettuce-core", version.ref = "lettuce" }
+kotlinx-coroutines-reactor = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-reactor", version.ref = "kotlinx-coroutines" }
+
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 ktor = { id = "io.ktor.plugin", version.ref = "ktor" }
 ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint-plugin" }
+protobuf = { id = "com.google.protobuf", version.ref = "protobuf-plugin" }
