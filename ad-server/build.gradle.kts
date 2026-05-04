@@ -28,6 +28,11 @@ dependencies {
     implementation(libs.postgres.jdbc)
     implementation(libs.hikaricp)
 
+    // Phase 2: gRPC client to frequency-service
+    implementation(libs.grpc.netty.shaded)
+    implementation(libs.grpc.stub)
+    implementation(libs.grpc.kotlin.stub)
+
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)
     testRuntimeOnly(libs.junit.jupiter.engine)
