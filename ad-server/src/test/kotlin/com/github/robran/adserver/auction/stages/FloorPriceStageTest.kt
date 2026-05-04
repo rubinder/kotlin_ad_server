@@ -57,9 +57,12 @@ class FloorPriceStageTest {
         runTest {
             val candidates =
                 listOf(
-                    candidate("c1", 0.5), // below
-                    candidate("c2", 1.0), // exactly at floor → keep
-                    candidate("c3", 2.0), // above → keep
+                    // below
+                    candidate("c1", 0.5),
+                    // exactly at floor → keep
+                    candidate("c2", 1.0),
+                    // above → keep
+                    candidate("c3", 2.0),
                 )
             val out = FloorPriceStage().evaluate(ctx(floor = 1.0), candidates)
             assertThat(out.map { it.campaign.id }).containsExactlyInAnyOrder("c2", "c3")

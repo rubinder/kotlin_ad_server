@@ -29,7 +29,7 @@ class AuctionPipeline(
         val ctx = AuctionContext(request = request, userId = resolveUserId(request))
         val initial = candidateBuilder.build(ctx)
         if (initial.isEmpty()) {
-            return BidResponse(id = request.id, nbr = NoBidReason.NO_CANDIDATES_AFTER_BLOCKING)
+            return BidResponse(id = request.id, nbr = NoBidReason.NO_MATCHING_CREATIVE)
         }
 
         var current = initial

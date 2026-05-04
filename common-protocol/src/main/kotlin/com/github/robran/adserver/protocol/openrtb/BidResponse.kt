@@ -26,7 +26,7 @@ data class Bid(
     val price: Double,                    // CPM, in BidResponse.cur
     val adid: String? = null,             // creative id
     val nurl: String? = null,             // win notice URL (out of scope this phase, kept for shape parity)
-    val adm: String? = null,              // creative markup (out of scope; demo returns null)
+    val adm: String? = null,              // creative markup (passed through from Creative.markup)
     val cid: String? = null,              // campaign id
     val crid: String? = null,             // creative id (alternative to adid)
     val cat: List<String> = emptyList(),  // IAB categories
@@ -47,7 +47,8 @@ object NoBidReason {
     const val BLOCKED_PUBLISHER = 9
     const val UNMATCHED_USER = 10
     // 100+ reserved for exchange-specific. We use 200+ for our stage rejections (debug-only).
-    const val NO_CANDIDATES_AFTER_BLOCKING = 200
-    const val NO_CANDIDATES_AFTER_FREQ_COMPSEP = 201
-    const val NO_CANDIDATES_AFTER_FLOOR = 202
+    const val NO_MATCHING_CREATIVE = 200
+    const val NO_CANDIDATES_AFTER_BLOCKING = 201
+    const val NO_CANDIDATES_AFTER_FREQ_COMPSEP = 202
+    const val NO_CANDIDATES_AFTER_FLOOR = 203
 }

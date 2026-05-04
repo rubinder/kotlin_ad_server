@@ -6,7 +6,9 @@ import assertk.assertions.isEmpty
 import assertk.assertions.isEqualTo
 import com.github.robran.adserver.auction.AuctionContext
 import com.github.robran.adserver.auction.Candidate
+import com.github.robran.adserver.auction.EnrichResult
 import com.github.robran.adserver.auction.FakeFrequencyClient
+import com.github.robran.adserver.auction.FrequencyClient
 import com.github.robran.adserver.inventory.Campaign
 import com.github.robran.adserver.inventory.Creative
 import com.github.robran.adserver.protocol.openrtb.Banner
@@ -55,9 +57,12 @@ class FrequencyAndCompsepStageTest {
         runTest {
             val candidates =
                 listOf(
-                    candidate("c1", "IAB1", cap = 5), // count 5 → exactly at cap → drop
-                    candidate("c2", "IAB2", cap = 5), // count 4 → below cap → keep
-                    candidate("c3", "IAB3", cap = 3), // count 0 (missing) → keep
+                    // count 5 → exactly at cap → drop
+                    candidate("c1", "IAB1", cap = 5),
+                    // count 4 → below cap → keep
+                    candidate("c2", "IAB2", cap = 5),
+                    // count 0 (missing) → keep
+                    candidate("c3", "IAB3", cap = 3),
                 )
             val client = FakeFrequencyClient(counts = mapOf("c1" to 5, "c2" to 4))
             val out = FrequencyAndCompsepStage(client).evaluate(ctx, candidates)
@@ -84,9 +89,12 @@ class FrequencyAndCompsepStageTest {
             val candidates =
                 listOf(
                     candidate("c1", "IAB1", cap = 3),
-                    candidate("c2", "IAB1", cap = 5), // category blocked
-                    candidate("c3", "IAB2", cap = 5), // count over cap
-                    candidate("c4", "IAB3", cap = 5), // survives
+                    // category blocked
+                    candidate("c2", "IAB1", cap = 5),
+                    // count over cap
+                    candidate("c3", "IAB2", cap = 5),
+                    // survives
+                    candidate("c4", "IAB3", cap = 5),
                 )
             val client =
                 FakeFrequencyClient(
@@ -102,13 +110,13 @@ class FrequencyAndCompsepStageTest {
         runTest {
             var called = false
             val tracker =
-                object : com.github.robran.adserver.auction.FrequencyClient {
+                object : FrequencyClient {
                     override suspend fun enrich(
                         userId: String,
                         campaignIds: List<String>,
-                    ): com.github.robran.adserver.auction.EnrichResult {
+                    ): EnrichResult {
                         called = true
-                        return com.github.robran.adserver.auction.EnrichResult(emptyMap(), emptySet())
+                        return EnrichResult(emptyMap(), emptySet())
                     }
                 }
             val out = FrequencyAndCompsepStage(tracker).evaluate(ctx, emptyList())

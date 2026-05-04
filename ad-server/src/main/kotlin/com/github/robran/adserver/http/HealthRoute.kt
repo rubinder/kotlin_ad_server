@@ -7,7 +7,8 @@ import io.ktor.server.routing.get
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
- * Liveness flips to true once the process is up. Readiness flips to true after inventory hydration.
+ * Readiness flag for the service. Flips to true after inventory hydration completes.
+ * `/healthz` is unconditionally 200 (process up); `/readyz` reads this state.
  */
 class HealthState {
     val ready = AtomicBoolean(false)
