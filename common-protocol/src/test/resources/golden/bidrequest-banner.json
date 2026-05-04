@@ -1,0 +1,33 @@
+{
+  "id": "req-001",
+  "imp": [
+    {
+      "id": "1",
+      "banner": { "w": 300, "h": 250 },
+      "bidfloor": 1.5,
+      "bidfloorcur": "USD",
+      "tagid": "slot-homepage-top",
+      "secure": 1
+    }
+  ],
+  "site": {
+    "id": "site-42",
+    "domain": "example.com",
+    "cat": ["IAB1"],
+    "page": "https://example.com/home"
+  },
+  "device": {
+    "ua": "Mozilla/5.0",
+    "ip": "203.0.113.1",
+    "devicetype": 2,
+    "os": "macOS"
+  },
+  "user": {
+    "id": "user-zalia"
+  },
+  "tmax": 100,
+  "cur": ["USD"],
+  "bcat": ["IAB7-39"],
+  "badv": ["bad.example.com"],
+  "bapp": []
+}
