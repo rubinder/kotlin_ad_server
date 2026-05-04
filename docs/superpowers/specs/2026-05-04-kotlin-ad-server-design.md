@@ -68,7 +68,7 @@ stages.fold(initial) { acc, stage -> stage.evaluate(ctx, acc) }
 ### 5.2 Stages (in order)
 
 1. **BlockingPolicies** — in-memory predicate over `BidRequest.bcat`/`badv`/`bapp`. No I/O.
-2. **FrequencyCap + CompetitiveSeparation** — *one combined* gRPC call to `frequency-service`: `EnrichForAuction(userId, campaignIds[]) → {freqCounts, recentCategories}`. Filters where `freqCount >= cap` and where category overlaps with `recentCategories` within the competitive-separation window.
+2. **FrequencyCap + CompetitiveSeparation** — *one combined* gRPC call to `frequency-service`: `EnrichForAuction(userId, campaignIds[]) → {freqCounts, recentCategories}`. Logically two filters fed by one network round-trip: (a) drop where `freqCounts[campaignId] >= cap`; (b) drop where `campaign.category ∈ recentCategories`. The "recent" window is enforced inside the frequency-service via Redis-side trimming (Section 7.2), so the response is already windowed.
 3. **FloorPrice** — in-memory: drops candidates where `bid < imp.bidfloor`. USD only for the demo.
 4. **Selection** — highest bid wins; ties broken random. Returns `BidResponse` with the chosen creative or no-fill (`nbr=0`).
 
@@ -119,7 +119,7 @@ message EnrichResponse {
 
 | Key | Type | TTL | Purpose |
 |---|---|---|---|
-| `freq:{userId}:{campaignId}` | counter | cap window (default 24h) | Per-user, per-campaign impression count |
+| `freq:{userId}:{campaignId}` | counter | cap window, rolling (TTL refreshed on every Flink-sourced INCRBY; default 24h) | Per-user, per-campaign impression count |
 | `winhistory:{userId}` | sorted set (score=ts, member=`{campaignId}:{category}`) | 1h sliding | Recent wins for competitive separation |
 
 ### 6.3 Atomicity
@@ -178,7 +178,7 @@ Prometheus registry, `/metrics` endpoint on both ad-server and frequency-service
 | `adserver.stage.duration` | Timer (histogram) | `stage`={blocking, freq+compsep, floor, selection} | Per-stage latency — the differentiating metric |
 | `adserver.candidates.surviving` | DistributionSummary | `stage` | Funnel |
 | `frequency.grpc.duration` | Timer | `outcome`={ok, timeout, error, fail_open} | Frequency RPC latency + fail-open visibility |
-| `redis.lookup.duration` | Timer | `op`={enrich, ack} | Redis-side timing inside frequency-service |
+| `redis.lookup.duration` | Timer | `op`=`enrich` | Redis-side timing inside frequency-service (read-only on the hot path; writes happen in the Flink sink) |
 | `kafka.producer.send.duration` | Timer | `topic` | Kafka send latency |
 | `inventory.snapshot.size` | Gauge | — | How many campaigns loaded |
 | `inventory.snapshot.age_seconds` | Gauge | — | When was last hydration |
