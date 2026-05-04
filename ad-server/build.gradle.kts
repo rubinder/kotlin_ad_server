@@ -43,4 +43,5 @@ dependencies {
     testImplementation(libs.testcontainers.junit)
     testImplementation(libs.testcontainers.postgres)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.grpc.inprocess)
 }
