@@ -86,6 +86,7 @@ grpc-netty-shaded = { module = "io.grpc:grpc-netty-shaded", version.ref = "grpc"
 grpc-protobuf = { module = "io.grpc:grpc-protobuf", version.ref = "grpc" }
 grpc-stub = { module = "io.grpc:grpc-stub", version.ref = "grpc" }
 grpc-kotlin-stub = { module = "io.grpc:grpc-kotlin-stub", version.ref = "grpc-kotlin" }
+grpc-inprocess = { module = "io.grpc:grpc-inprocess", version.ref = "grpc" }
 protobuf-java = { module = "com.google.protobuf:protobuf-java", version.ref = "protobuf" }
 protobuf-kotlin = { module = "com.google.protobuf:protobuf-kotlin", version.ref = "protobuf" }
 
@@ -393,6 +394,7 @@ dependencies {
     testRuntimeOnly(libs.junit.jupiter.engine)
     testImplementation(libs.assertk)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.grpc.inprocess)
     testImplementation(platform(libs.testcontainers.bom))
     testImplementation(libs.testcontainers.junit)
     // Generic Testcontainers GenericContainer is enough for Redis — no dedicated module needed.
@@ -913,7 +915,7 @@ class EnrichServiceIntegrationTest {
     }
 
     @Test
-    fun `combined response: counts AND categories in one RPC`() = runTest {
+    fun `combined response - counts AND categories in one RPC`() = runTest {
         redisClient.set("freq:user-B:c1", "3")
         redisClient.zadd("winhistory:user-B", "c1:IAB1" to 1.0)
 
