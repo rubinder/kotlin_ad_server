@@ -16,9 +16,16 @@ data class InventoryConfig(
     val skipMigrate: Boolean,
 )
 
+data class FrequencyConfig(
+    val host: String,
+    val port: Int,
+    val timeoutMs: Long,
+)
+
 data class AppConfig(
     val server: ServerConfig,
     val inventory: InventoryConfig,
+    val frequency: FrequencyConfig,
 ) {
     companion object {
         fun load(raw: Config = ConfigFactory.load()): AppConfig = raw.extract("adserver")

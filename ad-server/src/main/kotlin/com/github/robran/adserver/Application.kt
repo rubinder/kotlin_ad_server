@@ -2,7 +2,8 @@ package com.github.robran.adserver
 
 import com.github.robran.adserver.auction.AuctionPipeline
 import com.github.robran.adserver.auction.CandidateBuilder
-import com.github.robran.adserver.auction.FakeFrequencyClient
+import com.github.robran.adserver.auction.FrequencyClient
+import com.github.robran.adserver.auction.GrpcFrequencyClient
 import com.github.robran.adserver.auction.stages.BlockingPolicyStage
 import com.github.robran.adserver.auction.stages.FloorPriceStage
 import com.github.robran.adserver.auction.stages.FrequencyAndCompsepStage
@@ -12,6 +13,7 @@ import com.github.robran.adserver.http.bidRoutes
 import com.github.robran.adserver.http.healthRoutes
 import com.github.robran.adserver.inventory.InventoryLoader
 import com.github.robran.adserver.inventory.InventorySnapshot
+import io.grpc.netty.shaded.io.grpc.netty.NettyChannelBuilder
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
@@ -31,23 +33,45 @@ private val log = LoggerFactory.getLogger("com.github.robran.adserver.Applicatio
 fun main() {
     val config = AppConfig.load()
 
-    if (!config.inventory.skipMigrate) {
-        InventoryLoader.migrate(
-            config.inventory.jdbcUrl,
-            config.inventory.user,
-            config.inventory.password,
-        )
-    }
     val snapshot =
         InventoryLoader.pooledDataSource(
             config.inventory.jdbcUrl,
             config.inventory.user,
             config.inventory.password,
-        ).use { ds -> InventoryLoader(ds).load() }
-    val pipeline = buildPipeline(snapshot)
-    log.info("ad-server starting: {} campaigns loaded", snapshot.size)
+        ).use { ds ->
+            if (!config.inventory.skipMigrate) {
+                InventoryLoader.migrate(
+                    config.inventory.jdbcUrl,
+                    config.inventory.user,
+                    config.inventory.password,
+                )
+            }
+            InventoryLoader(ds).load()
+        }
+
+    val frequencyChannel =
+        NettyChannelBuilder
+            .forAddress(config.frequency.host, config.frequency.port)
+            .usePlaintext()
+            .build()
+    val frequencyClient = GrpcFrequencyClient(frequencyChannel, timeoutMs = config.frequency.timeoutMs)
+    val pipeline = buildPipeline(snapshot, frequencyClient)
+
+    log.info(
+        "ad-server starting: {} campaigns loaded, frequency-service @ {}:{}",
+        snapshot.size,
+        config.frequency.host,
+        config.frequency.port,
+    )
 
     val healthState = HealthState().apply { ready.set(true) }
+
+    Runtime.getRuntime().addShutdownHook(
+        Thread {
+            log.info("Shutting down ad-server")
+            frequencyChannel.shutdown()
+        },
+    )
 
     embeddedServer(Netty, host = config.server.host, port = config.server.port) {
         adServerModule(healthState, pipeline)
@@ -55,16 +79,19 @@ fun main() {
 }
 
 /**
- * Builds the auction pipeline. Phase 1 uses [FakeFrequencyClient] (always returns empty);
- * Phase 2 swaps it for a real gRPC client.
+ * Builds the auction pipeline with a caller-supplied [FrequencyClient].
+ * Production wires a [GrpcFrequencyClient]; tests wire a fake.
  */
-fun buildPipeline(snapshot: InventorySnapshot): AuctionPipeline =
+fun buildPipeline(
+    snapshot: InventorySnapshot,
+    frequencyClient: FrequencyClient,
+): AuctionPipeline =
     AuctionPipeline(
         candidateBuilder = CandidateBuilder(snapshot),
         stages =
             listOf(
                 BlockingPolicyStage(),
-                FrequencyAndCompsepStage(FakeFrequencyClient()),
+                FrequencyAndCompsepStage(frequencyClient),
                 FloorPriceStage(),
                 SelectionStage(Random.Default),
             ),
