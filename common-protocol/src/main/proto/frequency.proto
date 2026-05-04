@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package com.github.robran.adserver.protocol.frequency;
+
+option java_multiple_files = true;
+option java_package = "com.github.robran.adserver.protocol.frequency";
+
+// Single combined RPC: returns per-campaign impression counts AND the IAB categories
+// recently served to this user, in one round-trip. See spec section 5.2 for rationale.
+service Frequency {
+    rpc EnrichForAuction(EnrichRequest) returns (EnrichResponse);
+}
+
+message EnrichRequest {
+    string user_id = 1;
+    repeated string campaign_ids = 2;
+}
+
+message EnrichResponse {
+    // campaign_id -> current count over the cap window. Missing campaign means count=0.
+    map<string, int32> freq_counts = 1;
+    // distinct IAB categories served to the user within the competitive-separation window
+    repeated string recent_categories = 2;
+}
