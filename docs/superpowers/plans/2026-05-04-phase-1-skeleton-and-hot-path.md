@@ -1929,10 +1929,10 @@ class BlockingPolicyStageTest {
 }
 ```
 
-Add the coroutines-test dependency if not already pulled in transitively. In `ad-server/build.gradle.kts` testImplementation block, add:
+The coroutines-test dependency is already in the version catalog (added in Task 1 fix). In `ad-server/build.gradle.kts` testImplementation block, add:
 
 ```kotlin
-testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
+testImplementation(libs.kotlinx.coroutines.test)
 ```
 
 - [ ] **Step 2: Run the test to confirm it fails**
