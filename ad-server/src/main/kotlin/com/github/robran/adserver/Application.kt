@@ -19,6 +19,8 @@ import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
 import io.ktor.server.plugins.calllogging.CallLogging
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.server.plugins.statuspages.StatusPages
+import io.ktor.server.response.respond
 import io.ktor.server.routing.routing
 import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
@@ -36,13 +38,12 @@ fun main() {
             config.inventory.password,
         )
     }
-    val ds =
+    val snapshot =
         InventoryLoader.pooledDataSource(
             config.inventory.jdbcUrl,
             config.inventory.user,
             config.inventory.password,
-        )
-    val snapshot = InventoryLoader(ds).load()
+        ).use { ds -> InventoryLoader(ds).load() }
     val pipeline = buildPipeline(snapshot)
     log.info("ad-server starting: {} campaigns loaded", snapshot.size)
 
@@ -83,6 +84,14 @@ fun Application.adServerModule(
         )
     }
     install(CallLogging)
+    install(StatusPages) {
+        exception<IllegalArgumentException> { call, cause ->
+            call.respond(
+                io.ktor.http.HttpStatusCode.BadRequest,
+                mapOf("error" to "invalid_request", "message" to (cause.message ?: "bad request")),
+            )
+        }
+    }
 
     routing {
         healthRoutes(healthState)

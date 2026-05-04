@@ -153,4 +153,24 @@ class BidRouteIntegrationTest {
         val response = client.get("/healthz")
         assertThat(response.status).isEqualTo(HttpStatusCode.OK)
     }
+
+    @Test
+    fun `POST openrtb bid returns 400 when imp list is empty`() = testApplication {
+        application {
+            adServerModule(HealthState().apply { ready.set(true) }, pipeline)
+        }
+        val client = createClient {
+            install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }
+        }
+        val emptyImpRequest = BidRequest(
+            id = "req-empty",
+            imp = emptyList(),
+            user = User(id = "u"),
+        )
+        val response = client.post("/openrtb/bid") {
+            contentType(ContentType.Application.Json)
+            setBody(emptyImpRequest)
+        }
+        assertThat(response.status).isEqualTo(HttpStatusCode.BadRequest)
+    }
 }

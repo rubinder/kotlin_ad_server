@@ -25,6 +25,7 @@ class AuctionPipeline(
      * `nbr` set to indicate which stage filtered out the last candidate.
      */
     suspend fun runAuction(request: BidRequest): BidResponse {
+        require(request.imp.isNotEmpty()) { "BidRequest.imp must contain at least one impression" }
         val ctx = AuctionContext(request = request, userId = resolveUserId(request))
         val initial = candidateBuilder.build(ctx)
         if (initial.isEmpty()) {
