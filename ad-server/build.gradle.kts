@@ -37,4 +37,5 @@ dependencies {
     testImplementation(platform(libs.testcontainers.bom))
     testImplementation(libs.testcontainers.junit)
     testImplementation(libs.testcontainers.postgres)
+    testImplementation(libs.kotlinx.coroutines.test)
 }
