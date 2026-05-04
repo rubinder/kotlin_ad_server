@@ -30,3 +30,6 @@ flyway/
 
 # Testcontainers
 .testcontainers/
+
+# graphify
+graphify-out/cache
