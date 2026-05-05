@@ -66,7 +66,11 @@ fun main() {
         meterRegistry = meterRegistry,
     )
     val kafkaProducer = com.github.robran.adserver.kafka.ProducerFactory.avroProducer(config.kafka)
-    val eventEmitter = com.github.robran.adserver.kafka.KafkaEventEmitter(kafkaProducer, config.kafka)
+    val eventEmitter = com.github.robran.adserver.kafka.KafkaEventEmitter(
+        kafkaProducer,
+        config.kafka,
+        meterRegistry = meterRegistry,
+    )
     val pipeline = buildPipeline(snapshot, frequencyClient, eventEmitter, meterRegistry)
 
     log.info(
