@@ -1,5 +1,10 @@
 package com.github.robran.adserver.auction
 
+import com.github.robran.adserver.kafka.EventEmitter
+import com.github.robran.adserver.kafka.NoOpEventEmitter
+import com.github.robran.adserver.protocol.events.AuctionResultEvent
+import com.github.robran.adserver.protocol.events.ImpressionEvent
+import com.github.robran.adserver.protocol.events.Outcome
 import com.github.robran.adserver.protocol.openrtb.Bid
 import com.github.robran.adserver.protocol.openrtb.BidRequest
 import com.github.robran.adserver.protocol.openrtb.BidResponse
@@ -7,43 +12,46 @@ import com.github.robran.adserver.protocol.openrtb.NoBidReason
 import com.github.robran.adserver.protocol.openrtb.SeatBid
 import java.util.UUID
 
-/**
- * Runs the rule pipeline:
- *
- *   candidates(0) → blocking → freq+compsep → floor → selection
- *
- * Stages are passed in declaration order. If a stage returns empty, the auction terminates and
- * the response is no-fill with a stage-specific [NoBidReason] (Phase 1 debug-only — Phase 4 will
- * also emit observability spans). Pure orchestration; no I/O lives here.
- */
 class AuctionPipeline(
     private val candidateBuilder: CandidateBuilder,
     private val stages: List<RuleStage>,
+    private val eventEmitter: EventEmitter = NoOpEventEmitter,
+    private val clock: () -> Long = { System.currentTimeMillis() },
 ) {
-    /**
-     * Run a full auction. Always returns a [BidResponse], either with a winning seatbid or with
-     * `nbr` set to indicate which stage filtered out the last candidate.
-     */
     suspend fun runAuction(request: BidRequest): BidResponse {
         require(request.imp.isNotEmpty()) { "BidRequest.imp must contain at least one impression" }
         val ctx = AuctionContext(request = request, userId = resolveUserId(request))
         val initial = candidateBuilder.build(ctx)
+
+        val sizes = IntArray(4) // [initial, post-blocking, post-freq+compsep, post-floor]
+        sizes[0] = initial.size
+
         if (initial.isEmpty()) {
+            emitOutcome(request, ctx, sizes, Outcome.NO_FILL_BLOCKING, winner = null)
             return BidResponse(id = request.id, nbr = NoBidReason.NO_MATCHING_CREATIVE)
         }
 
         var current = initial
-        var stageIndex = 0
-        for (stage in stages) {
+        for ((idx, stage) in stages.withIndex()) {
             current = stage.evaluate(ctx, current)
+            if (idx + 1 < sizes.size) sizes[idx + 1] = current.size
             if (current.isEmpty()) {
-                return BidResponse(id = request.id, nbr = noBidReasonFor(stageIndex))
+                val outcome =
+                    when (idx) {
+                        0 -> Outcome.NO_FILL_BLOCKING
+                        1 -> Outcome.NO_FILL_FREQ_COMPSEP
+                        2 -> Outcome.NO_FILL_FLOOR
+                        else -> Outcome.NO_FILL_OTHER
+                    }
+                emitOutcome(request, ctx, sizes, outcome, winner = null)
+                return BidResponse(id = request.id, nbr = noBidReasonFor(idx))
             }
-            stageIndex++
         }
 
-        // Selection always returns 0 or 1 candidate. If we got here, current.size == 1.
         val winner = current.single()
+        emitOutcome(request, ctx, sizes, Outcome.FILLED, winner = winner)
+        emitImpression(ctx, winner)
+
         return BidResponse(
             id = request.id,
             seatbid =
@@ -68,6 +76,46 @@ class AuctionPipeline(
                     ),
                 ),
         )
+    }
+
+    private fun emitOutcome(
+        request: BidRequest,
+        ctx: AuctionContext,
+        sizes: IntArray,
+        outcome: Outcome,
+        winner: Candidate?,
+    ) {
+        val event =
+            AuctionResultEvent.newBuilder()
+                .setRequestId(request.id)
+                .setUserId(ctx.userId)
+                .setImpId(ctx.imp.id)
+                .setTsMillis(clock())
+                .setOutcome(outcome)
+                .setWinnerCampaignId(winner?.campaign?.id)
+                .setWinnerPrice(winner?.bidPrice)
+                .setCandidatesInitial(sizes[0])
+                .setCandidatesAfterBlocking(sizes[1])
+                .setCandidatesAfterFreqCompsep(sizes[2])
+                .setCandidatesAfterFloor(sizes[3])
+                .build()
+        eventEmitter.emitAuctionResult(event)
+    }
+
+    private fun emitImpression(
+        ctx: AuctionContext,
+        winner: Candidate,
+    ) {
+        val event =
+            ImpressionEvent.newBuilder()
+                .setUserId(ctx.userId)
+                .setCampaignId(winner.campaign.id)
+                .setCreativeId(winner.creative.id)
+                .setCategory(winner.campaign.category)
+                .setPrice(winner.bidPrice)
+                .setTsMillis(clock())
+                .build()
+        eventEmitter.emitImpression(event)
     }
 
     private fun resolveUserId(request: BidRequest): String =

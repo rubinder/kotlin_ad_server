@@ -55,7 +55,9 @@ fun main() {
             .usePlaintext()
             .build()
     val frequencyClient = GrpcFrequencyClient(frequencyChannel, timeoutMs = config.frequency.timeoutMs)
-    val pipeline = buildPipeline(snapshot, frequencyClient)
+    val kafkaProducer = com.github.robran.adserver.kafka.ProducerFactory.avroProducer(config.kafka)
+    val eventEmitter = com.github.robran.adserver.kafka.KafkaEventEmitter(kafkaProducer, config.kafka)
+    val pipeline = buildPipeline(snapshot, frequencyClient, eventEmitter)
 
     log.info(
         "ad-server starting: {} campaigns loaded, frequency-service @ {}:{}",
@@ -69,6 +71,7 @@ fun main() {
     Runtime.getRuntime().addShutdownHook(
         Thread {
             log.info("Shutting down ad-server")
+            eventEmitter.close()
             frequencyChannel.shutdown()
         },
     )
@@ -85,6 +88,7 @@ fun main() {
 fun buildPipeline(
     snapshot: InventorySnapshot,
     frequencyClient: FrequencyClient,
+    eventEmitter: com.github.robran.adserver.kafka.EventEmitter = com.github.robran.adserver.kafka.NoOpEventEmitter,
 ): AuctionPipeline =
     AuctionPipeline(
         candidateBuilder = CandidateBuilder(snapshot),
@@ -95,6 +99,7 @@ fun buildPipeline(
                 FloorPriceStage(),
                 SelectionStage(Random.Default),
             ),
+        eventEmitter = eventEmitter,
     )
 
 fun Application.adServerModule(

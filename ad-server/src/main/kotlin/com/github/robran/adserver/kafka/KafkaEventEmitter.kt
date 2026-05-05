@@ -11,21 +11,33 @@ import org.apache.kafka.clients.producer.Producer
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.slf4j.LoggerFactory
 
+/** Public emitter contract — pipeline depends on this, not the concrete Kafka type. */
+interface EventEmitter {
+    fun emitImpression(event: ImpressionEvent)
+
+    fun emitAuctionResult(event: AuctionResultEvent)
+}
+
+/** No-op for tests that don't care about emission. */
+object NoOpEventEmitter : EventEmitter {
+    override fun emitImpression(event: ImpressionEvent) {}
+
+    override fun emitAuctionResult(event: AuctionResultEvent) {}
+}
+
 /**
- * Fire-and-forget event emitter. The request path calls [emitImpression] / [emitAuctionResult]
- * and returns immediately. Producer.send() is non-blocking by default (returns a Future and
- * batches behind the scenes); we don't even await the Future. Errors land in the producer
- * callback but never propagate up to the request handler.
+ * Fire-and-forget Kafka implementation. The request path calls [emitImpression] /
+ * [emitAuctionResult] and returns immediately. Errors land in the producer callback but never
+ * propagate up to the request handler.
  */
 class KafkaEventEmitter(
     private val producer: Producer<String, Any>,
     private val config: KafkaConfig,
     private val emitterScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
-) : AutoCloseable {
-
+) : EventEmitter, AutoCloseable {
     private val log = LoggerFactory.getLogger(javaClass)
 
-    fun emitImpression(event: ImpressionEvent) {
+    override fun emitImpression(event: ImpressionEvent) {
         emitterScope.launch {
             try {
                 producer.send(
@@ -39,7 +51,7 @@ class KafkaEventEmitter(
         }
     }
 
-    fun emitAuctionResult(event: AuctionResultEvent) {
+    override fun emitAuctionResult(event: AuctionResultEvent) {
         emitterScope.launch {
             try {
                 producer.send(
