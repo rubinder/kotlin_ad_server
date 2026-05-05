@@ -50,5 +50,22 @@ dependencies {
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.grpc.inprocess)
     testImplementation(project(":frequency-service"))
+    testImplementation(project(":flink-impression-aggregator"))
     testImplementation(libs.testcontainers.kafka)
+    testImplementation(libs.flink.streaming.java)
+    testImplementation(libs.flink.clients)
+    testImplementation(libs.flink.connector.kafka)
+    testImplementation(libs.flink.avro)
+    testImplementation(libs.flink.avro.confluent.registry)
+    testImplementation(libs.flink.test.utils)
+    testImplementation(libs.flink.connector.base)
+    testImplementation(libs.lettuce.core)
+}
+
+tasks.withType<Test> {
+    // Flink 1.20 + Java 17/21: Kryo's chill package needs reflective access to java.util internals.
+    jvmArgs(
+        "--add-opens=java.base/java.util=ALL-UNNAMED",
+        "--add-opens=java.base/java.lang=ALL-UNNAMED",
+    )
 }
