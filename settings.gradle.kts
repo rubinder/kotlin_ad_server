@@ -32,4 +32,5 @@ include(
     "inventory-loader",
     "ad-server",
     "frequency-service",
+    "flink-impression-aggregator",
 )
