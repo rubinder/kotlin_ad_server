@@ -9,10 +9,6 @@ application {
     mainClass.set("com.github.robran.adserver.ApplicationKt")
 }
 
-configurations.all {
-    resolutionStrategy.force("org.apache.kafka:kafka-clients:3.8.0")
-}
-
 dependencies {
     implementation(project(":common-protocol"))
     implementation(project(":inventory-loader"))
