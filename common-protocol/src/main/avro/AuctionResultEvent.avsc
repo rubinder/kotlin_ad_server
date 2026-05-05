@@ -1,0 +1,26 @@
+{
+  "namespace": "com.github.robran.adserver.protocol.events",
+  "type": "record",
+  "name": "AuctionResultEvent",
+  "doc": "Post-auction analytics: winner + reason for no-fill if applicable. Not on the request path.",
+  "fields": [
+    { "name": "request_id",  "type": "string" },
+    { "name": "user_id",     "type": "string" },
+    { "name": "imp_id",      "type": "string" },
+    { "name": "ts_millis",   "type": "long" },
+    {
+      "name": "outcome",
+      "type": {
+        "type": "enum",
+        "name": "Outcome",
+        "symbols": ["FILLED", "NO_FILL_BLOCKING", "NO_FILL_FREQ_COMPSEP", "NO_FILL_FLOOR", "NO_FILL_OTHER"]
+      }
+    },
+    { "name": "winner_campaign_id", "type": ["null", "string"], "default": null },
+    { "name": "winner_price",       "type": ["null", "double"], "default": null },
+    { "name": "candidates_initial", "type": "int" },
+    { "name": "candidates_after_blocking", "type": "int" },
+    { "name": "candidates_after_freq_compsep", "type": "int" },
+    { "name": "candidates_after_floor", "type": "int" }
+  ]
+}
