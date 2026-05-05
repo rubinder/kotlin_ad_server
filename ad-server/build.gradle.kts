@@ -9,6 +9,10 @@ application {
     mainClass.set("com.github.robran.adserver.ApplicationKt")
 }
 
+configurations.all {
+    resolutionStrategy.force("org.apache.kafka:kafka-clients:3.8.0")
+}
+
 dependencies {
     implementation(project(":common-protocol"))
     implementation(project(":inventory-loader"))
@@ -33,6 +37,11 @@ dependencies {
     implementation(libs.grpc.stub)
     implementation(libs.grpc.kotlin.stub)
 
+    // Phase 3: Kafka producer + Avro
+    implementation(libs.kafka.clients)
+    implementation(libs.confluent.kafka.avro.serializer)
+    implementation(libs.confluent.kafka.schema.registry.client)
+
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)
     testRuntimeOnly(libs.junit.jupiter.engine)
@@ -45,4 +54,5 @@ dependencies {
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.grpc.inprocess)
     testImplementation(project(":frequency-service"))
+    testImplementation(libs.testcontainers.kafka)
 }

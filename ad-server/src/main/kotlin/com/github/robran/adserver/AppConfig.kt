@@ -22,12 +22,23 @@ data class FrequencyConfig(
     val timeoutMs: Long,
 )
 
+data class KafkaConfig(
+    val bootstrapServers: String,
+    val schemaRegistryUrl: String,
+    val topicAuctionResults: String,
+    val topicImpressionEvents: String,
+    val lingerMs: Int,
+    val acks: String,
+)
+
 data class AppConfig(
     val server: ServerConfig,
     val inventory: InventoryConfig,
     val frequency: FrequencyConfig,
+    val kafka: KafkaConfig,
 ) {
     companion object {
-        fun load(raw: Config = ConfigFactory.load()): AppConfig = raw.extract("adserver")
+        fun load(raw: Config = ConfigFactory.load()): AppConfig =
+            raw.extract("adserver")
     }
 }
