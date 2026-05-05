@@ -15,6 +15,15 @@ dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
         mavenCentral()
+        maven {
+            name = "Confluent"
+            url = uri("https://packages.confluent.io/maven/")
+            content {
+                includeGroup("io.confluent")
+                // The Avro confluent registry connector is also published here.
+                includeGroup("org.apache.flink")
+            }
+        }
     }
 }
 
