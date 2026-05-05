@@ -8,9 +8,16 @@ data class ServerConfig(val port: Int)
 
 data class RedisConfig(val url: String)
 
+data class MetricsConfig(
+    val enabled: Boolean,
+    val port: Int,
+    val commonTags: Map<String, String>,
+)
+
 data class AppConfig(
     val server: ServerConfig,
     val redis: RedisConfig,
+    val metrics: MetricsConfig,
 ) {
     companion object {
         fun load(raw: Config = ConfigFactory.load()): AppConfig =
