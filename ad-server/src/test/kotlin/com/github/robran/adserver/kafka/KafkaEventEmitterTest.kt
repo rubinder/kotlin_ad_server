@@ -30,10 +30,10 @@ import java.util.UUID
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class KafkaEventEmitterTest {
-
-    private val kafka: ConfluentKafkaContainer = ConfluentKafkaContainer(
-        DockerImageName.parse("confluentinc/cp-kafka:7.7.0"),
-    )
+    private val kafka: ConfluentKafkaContainer =
+        ConfluentKafkaContainer(
+            DockerImageName.parse("confluentinc/cp-kafka:7.7.0"),
+        )
 
     private val mockSchemaRegistryScope = "phase3-test-${UUID.randomUUID()}"
     private val mockSchemaRegistryUrl = "mock://$mockSchemaRegistryScope"
@@ -45,21 +45,23 @@ class KafkaEventEmitterTest {
     @BeforeAll
     fun setup() {
         kafka.start()
-        config = KafkaConfig(
-            bootstrapServers = kafka.bootstrapServers,
-            schemaRegistryUrl = mockSchemaRegistryUrl,
-            topicAuctionResults = "auction-results-test",
-            topicImpressionEvents = "impression-events-test",
-            lingerMs = 0,
-            acks = "1",
-        )
-        val props = Properties().apply {
-            put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.bootstrapServers)
-            put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer::class.java.name)
-            put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, KafkaAvroSerializer::class.java.name)
-            put(KafkaAvroSerializerConfig.SCHEMA_REGISTRY_URL_CONFIG, mockSchemaRegistryUrl)
-            put(ProducerConfig.ACKS_CONFIG, "1")
-        }
+        config =
+            KafkaConfig(
+                bootstrapServers = kafka.bootstrapServers,
+                schemaRegistryUrl = mockSchemaRegistryUrl,
+                topicAuctionResults = "auction-results-test",
+                topicImpressionEvents = "impression-events-test",
+                lingerMs = 0,
+                acks = "1",
+            )
+        val props =
+            Properties().apply {
+                put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.bootstrapServers)
+                put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer::class.java.name)
+                put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, KafkaAvroSerializer::class.java.name)
+                put(KafkaAvroSerializerConfig.SCHEMA_REGISTRY_URL_CONFIG, mockSchemaRegistryUrl)
+                put(ProducerConfig.ACKS_CONFIG, "1")
+            }
         producer = KafkaProducer(props)
         emitter = KafkaEventEmitter(producer, config)
     }
@@ -74,14 +76,15 @@ class KafkaEventEmitterTest {
     @Timeout(value = 30)
     @Test
     fun `emitImpression sends an Avro-encoded record to the configured topic`() {
-        val event = ImpressionEvent.newBuilder()
-            .setUserId("user-1")
-            .setCampaignId("camp-001")
-            .setCreativeId("cre-001a")
-            .setCategory("IAB13")
-            .setPrice(2.50)
-            .setTsMillis(1L)
-            .build()
+        val event =
+            ImpressionEvent.newBuilder()
+                .setUserId("user-1")
+                .setCampaignId("camp-001")
+                .setCreativeId("cre-001a")
+                .setCategory("IAB13")
+                .setPrice(2.50)
+                .setTsMillis(1L)
+                .build()
         emitter.emitImpression(event)
         producer.flush()
 
@@ -93,19 +96,20 @@ class KafkaEventEmitterTest {
     @Timeout(value = 30)
     @Test
     fun `emitAuctionResult sends an Avro-encoded record with outcome enum`() {
-        val event = AuctionResultEvent.newBuilder()
-            .setRequestId("r1")
-            .setUserId("user-1")
-            .setImpId("1")
-            .setTsMillis(1L)
-            .setOutcome(Outcome.FILLED)
-            .setWinnerCampaignId("camp-007")
-            .setWinnerPrice(3.10)
-            .setCandidatesInitial(5)
-            .setCandidatesAfterBlocking(5)
-            .setCandidatesAfterFreqCompsep(3)
-            .setCandidatesAfterFloor(2)
-            .build()
+        val event =
+            AuctionResultEvent.newBuilder()
+                .setRequestId("r1")
+                .setUserId("user-1")
+                .setImpId("1")
+                .setTsMillis(1L)
+                .setOutcome(Outcome.FILLED)
+                .setWinnerCampaignId("camp-007")
+                .setWinnerPrice(3.10)
+                .setCandidatesInitial(5)
+                .setCandidatesAfterBlocking(5)
+                .setCandidatesAfterFreqCompsep(3)
+                .setCandidatesAfterFloor(2)
+                .build()
         emitter.emitAuctionResult(event)
         producer.flush()
 
@@ -115,16 +119,17 @@ class KafkaEventEmitterTest {
     }
 
     private inline fun <reified T> pollOne(topic: String): T {
-        val consumerProps = Properties().apply {
-            put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.bootstrapServers)
-            put(ConsumerConfig.GROUP_ID_CONFIG, "test-${UUID.randomUUID()}")
-            put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
-            put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false")
-            put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer::class.java.name)
-            put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, KafkaAvroDeserializer::class.java.name)
-            put(KafkaAvroDeserializerConfig.SCHEMA_REGISTRY_URL_CONFIG, mockSchemaRegistryUrl)
-            put(KafkaAvroDeserializerConfig.SPECIFIC_AVRO_READER_CONFIG, "true")
-        }
+        val consumerProps =
+            Properties().apply {
+                put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.bootstrapServers)
+                put(ConsumerConfig.GROUP_ID_CONFIG, "test-${UUID.randomUUID()}")
+                put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
+                put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false")
+                put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer::class.java.name)
+                put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, KafkaAvroDeserializer::class.java.name)
+                put(KafkaAvroDeserializerConfig.SCHEMA_REGISTRY_URL_CONFIG, mockSchemaRegistryUrl)
+                put(KafkaAvroDeserializerConfig.SPECIFIC_AVRO_READER_CONFIG, "true")
+            }
         val consumer = KafkaConsumer<String, T>(consumerProps)
         consumer.use {
             it.subscribe(listOf(topic))
