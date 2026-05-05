@@ -29,6 +29,9 @@ flink = "1.20.0"
 flink-kafka-connector = "3.3.0-1.20"
 gradle-avro-plugin = "1.9.1"
 
+# Phase 4a additions
+micrometer = "1.13.6"
+
 [libraries]
 # Kotlin
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
@@ -99,6 +102,11 @@ flink-connector-base = { module = "org.apache.flink:flink-connector-base", versi
 
 # Phase 3: Testcontainers — Kafka + Schema Registry
 testcontainers-kafka = { module = "org.testcontainers:kafka" }
+
+# Phase 4a: Metrics
+micrometer-core = { module = "io.micrometer:micrometer-core", version.ref = "micrometer" }
+micrometer-registry-prometheus = { module = "io.micrometer:micrometer-registry-prometheus", version.ref = "micrometer" }
+ktor-server-metrics-micrometer = { module = "io.ktor:ktor-server-metrics-micrometer", version.ref = "ktor" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
