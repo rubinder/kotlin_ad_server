@@ -106,7 +106,13 @@ class Phase2EndToEndTest {
     @Test
     fun `auction returns a winner when no caps are set`() =
         testApplication {
-            application { adServerModule(HealthState().apply { ready.set(true) }, pipeline) }
+            application {
+                adServerModule(
+                    HealthState().apply { ready.set(true) },
+                    pipeline,
+                    io.micrometer.prometheusmetrics.PrometheusMeterRegistry(io.micrometer.prometheusmetrics.PrometheusConfig.DEFAULT),
+                )
+            }
             val client = createClient { install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) } }
 
             val response =
@@ -123,7 +129,13 @@ class Phase2EndToEndTest {
     @Test
     fun `auction skips a campaign whose freq cap is hit`() =
         testApplication {
-            application { adServerModule(HealthState().apply { ready.set(true) }, pipeline) }
+            application {
+                adServerModule(
+                    HealthState().apply { ready.set(true) },
+                    pipeline,
+                    io.micrometer.prometheusmetrics.PrometheusMeterRegistry(io.micrometer.prometheusmetrics.PrometheusConfig.DEFAULT),
+                )
+            }
             val client = createClient { install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) } }
 
             val userId = "capped-user"
@@ -147,7 +159,13 @@ class Phase2EndToEndTest {
     @Test
     fun `competitive separation drops candidates whose category is in winhistory`() =
         testApplication {
-            application { adServerModule(HealthState().apply { ready.set(true) }, pipeline) }
+            application {
+                adServerModule(
+                    HealthState().apply { ready.set(true) },
+                    pipeline,
+                    io.micrometer.prometheusmetrics.PrometheusMeterRegistry(io.micrometer.prometheusmetrics.PrometheusConfig.DEFAULT),
+                )
+            }
             val client = createClient { install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) } }
 
             val userId = "saturated-user"

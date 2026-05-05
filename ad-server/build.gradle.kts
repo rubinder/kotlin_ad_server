@@ -38,6 +38,11 @@ dependencies {
     implementation(libs.confluent.kafka.avro.serializer)
     implementation(libs.confluent.kafka.schema.registry.client)
 
+    // Phase 4a: Micrometer metrics
+    implementation(libs.micrometer.core)
+    implementation(libs.micrometer.registry.prometheus)
+    implementation(libs.ktor.server.metrics.micrometer)
+
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)
     testRuntimeOnly(libs.junit.jupiter.engine)

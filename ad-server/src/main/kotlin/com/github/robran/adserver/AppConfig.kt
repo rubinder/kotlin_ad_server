@@ -31,13 +31,20 @@ data class KafkaConfig(
     val acks: String,
 )
 
+data class MetricsConfig(
+    val enabled: Boolean,
+    val commonTags: Map<String, String>,
+)
+
 data class AppConfig(
     val server: ServerConfig,
     val inventory: InventoryConfig,
     val frequency: FrequencyConfig,
     val kafka: KafkaConfig,
+    val metrics: MetricsConfig,
 ) {
     companion object {
-        fun load(raw: Config = ConfigFactory.load()): AppConfig = raw.extract("adserver")
+        fun load(raw: Config = ConfigFactory.load()): AppConfig =
+            raw.extract("adserver")
     }
 }

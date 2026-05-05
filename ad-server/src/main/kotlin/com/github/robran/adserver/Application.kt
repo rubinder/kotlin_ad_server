@@ -11,6 +11,10 @@ import com.github.robran.adserver.auction.stages.SelectionStage
 import com.github.robran.adserver.http.HealthState
 import com.github.robran.adserver.http.bidRoutes
 import com.github.robran.adserver.http.healthRoutes
+import com.github.robran.adserver.http.metricsRoutes
+import com.github.robran.adserver.metrics.MeterRegistryFactory
+import io.ktor.server.metrics.micrometer.MicrometerMetrics
+import io.micrometer.prometheusmetrics.PrometheusMeterRegistry
 import com.github.robran.adserver.inventory.InventoryLoader
 import com.github.robran.adserver.inventory.InventorySnapshot
 import io.grpc.netty.shaded.io.grpc.netty.NettyChannelBuilder
@@ -49,6 +53,8 @@ fun main() {
             InventoryLoader(ds).load()
         }
 
+    val meterRegistry = MeterRegistryFactory.build(config.metrics)
+
     val frequencyChannel =
         NettyChannelBuilder
             .forAddress(config.frequency.host, config.frequency.port)
@@ -73,11 +79,12 @@ fun main() {
             log.info("Shutting down ad-server")
             eventEmitter.close()
             frequencyChannel.shutdown()
+            meterRegistry.close()
         },
     )
 
     embeddedServer(Netty, host = config.server.host, port = config.server.port) {
-        adServerModule(healthState, pipeline)
+        adServerModule(healthState, pipeline, meterRegistry)
     }.start(wait = true)
 }
 
@@ -105,6 +112,7 @@ fun buildPipeline(
 fun Application.adServerModule(
     healthState: HealthState,
     pipeline: AuctionPipeline,
+    meterRegistry: PrometheusMeterRegistry,
 ) {
     install(ContentNegotiation) {
         json(
@@ -116,6 +124,9 @@ fun Application.adServerModule(
         )
     }
     install(CallLogging)
+    install(MicrometerMetrics) {
+        registry = meterRegistry
+    }
     install(StatusPages) {
         exception<IllegalArgumentException> { call, cause ->
             call.respond(
@@ -128,5 +139,6 @@ fun Application.adServerModule(
     routing {
         healthRoutes(healthState)
         bidRoutes(pipeline)
+        metricsRoutes(meterRegistry)
     }
 }
