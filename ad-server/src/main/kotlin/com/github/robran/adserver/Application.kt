@@ -63,7 +63,7 @@ fun main() {
     val frequencyClient = GrpcFrequencyClient(frequencyChannel, timeoutMs = config.frequency.timeoutMs)
     val kafkaProducer = com.github.robran.adserver.kafka.ProducerFactory.avroProducer(config.kafka)
     val eventEmitter = com.github.robran.adserver.kafka.KafkaEventEmitter(kafkaProducer, config.kafka)
-    val pipeline = buildPipeline(snapshot, frequencyClient, eventEmitter)
+    val pipeline = buildPipeline(snapshot, frequencyClient, eventEmitter, meterRegistry)
 
     log.info(
         "ad-server starting: {} campaigns loaded, frequency-service @ {}:{}",
@@ -96,6 +96,8 @@ fun buildPipeline(
     snapshot: InventorySnapshot,
     frequencyClient: FrequencyClient,
     eventEmitter: com.github.robran.adserver.kafka.EventEmitter = com.github.robran.adserver.kafka.NoOpEventEmitter,
+    meterRegistry: io.micrometer.core.instrument.MeterRegistry =
+        com.github.robran.adserver.metrics.PipelineMetrics.defaultRegistry(),
 ): AuctionPipeline =
     AuctionPipeline(
         candidateBuilder = CandidateBuilder(snapshot),
@@ -107,6 +109,7 @@ fun buildPipeline(
                 SelectionStage(Random.Default),
             ),
         eventEmitter = eventEmitter,
+        meterRegistry = meterRegistry,
     )
 
 fun Application.adServerModule(
