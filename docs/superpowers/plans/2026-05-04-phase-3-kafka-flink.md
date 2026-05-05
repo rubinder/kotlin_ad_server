@@ -1628,7 +1628,7 @@ import io.lettuce.core.RedisURI
 import io.lettuce.core.api.StatefulRedisConnection
 import org.apache.flink.api.common.functions.OpenContext
 import org.apache.flink.streaming.api.functions.sink.SinkFunction
-import org.apache.flink.streaming.api.functions.sink.legacy.RichSinkFunction
+import org.apache.flink.streaming.api.functions.sink.RichSinkFunction
 import org.slf4j.LoggerFactory
 import io.lettuce.core.RedisClient as LettuceClient
 
@@ -1698,7 +1698,7 @@ class RedisCounterSink(
 }
 ```
 
-Note on `RichSinkFunction`: Flink 1.20 deprecated the legacy `RichSinkFunction` in favor of `Sink<T>` interface, but `RichSinkFunction` still works and is dramatically simpler. The deprecated class lives at `org.apache.flink.streaming.api.functions.sink.legacy.RichSinkFunction` in 1.20. Using it is acceptable for Phase 3; if Phase 5 / 6 polish wants to migrate, that's a future task.
+Note on `RichSinkFunction`: Flink 1.20 deprecated `RichSinkFunction` in favor of the `Sink<T>` interface, but `RichSinkFunction` still works and is dramatically simpler. The deprecated class stays at its original path `org.apache.flink.streaming.api.functions.sink.RichSinkFunction` (no `.legacy.` subpackage in 1.20). Compilation emits three deprecation warnings — acceptable for Phase 3; migrate as a Phase 5 / 6 polish task.
 
 - [ ] **Step 2: Verify compile**
 
