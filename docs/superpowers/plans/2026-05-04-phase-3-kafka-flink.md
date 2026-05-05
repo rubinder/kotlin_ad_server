@@ -659,7 +659,8 @@ Append at the end of the existing `adserver { ... }` block, before the closing b
         topicImpressionEvents = ${?KAFKA_TOPIC_IMPRESSION_EVENTS}
         lingerMs = 5
         lingerMs = ${?KAFKA_LINGER_MS}
-        acks = "1"
+        # Idempotence in ProducerFactory requires acks=all (Kafka rejects "1" + idempotence).
+        acks = "all"
         acks = ${?KAFKA_ACKS}
     }
 ```
@@ -835,7 +836,7 @@ class KafkaEventEmitterTest {
             topicAuctionResults = "auction-results-test",
             topicImpressionEvents = "impression-events-test",
             lingerMs = 0,
-            acks = "1",
+            acks = "all", // idempotence requires acks=all
         )
         val props = Properties().apply {
             put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.bootstrapServers)
@@ -2196,7 +2197,7 @@ class Phase3EndToEndTest {
             topicAuctionResults = "auction-results-test",
             topicImpressionEvents = "impression-events-test",
             lingerMs = 0,
-            acks = "1",
+            acks = "all", // idempotence requires acks=all
         )
         val producer = ProducerFactory.avroProducer(kafkaConfig)
         emitter = KafkaEventEmitter(producer, kafkaConfig)
