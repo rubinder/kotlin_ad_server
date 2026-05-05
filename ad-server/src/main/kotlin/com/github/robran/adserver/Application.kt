@@ -60,7 +60,11 @@ fun main() {
             .forAddress(config.frequency.host, config.frequency.port)
             .usePlaintext()
             .build()
-    val frequencyClient = GrpcFrequencyClient(frequencyChannel, timeoutMs = config.frequency.timeoutMs)
+    val frequencyClient = GrpcFrequencyClient(
+        frequencyChannel,
+        timeoutMs = config.frequency.timeoutMs,
+        meterRegistry = meterRegistry,
+    )
     val kafkaProducer = com.github.robran.adserver.kafka.ProducerFactory.avroProducer(config.kafka)
     val eventEmitter = com.github.robran.adserver.kafka.KafkaEventEmitter(kafkaProducer, config.kafka)
     val pipeline = buildPipeline(snapshot, frequencyClient, eventEmitter, meterRegistry)
