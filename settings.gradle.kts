@@ -22,4 +22,5 @@ include(
     "common-protocol",
     "inventory-loader",
     "ad-server",
+    "frequency-service",
 )

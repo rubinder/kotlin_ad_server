@@ -8,6 +8,7 @@ import assertk.assertions.isNotNull
 import assertk.assertions.isNull
 import com.github.robran.adserver.adServerModule
 import com.github.robran.adserver.auction.AuctionPipeline
+import com.github.robran.adserver.auction.FakeFrequencyClient
 import com.github.robran.adserver.buildPipeline
 import com.github.robran.adserver.inventory.InventoryLoader
 import com.github.robran.adserver.inventory.SeedLoader
@@ -55,7 +56,7 @@ class BidRouteIntegrationTest {
             .use { ds ->
                 SeedLoader.seed(ds)
                 val snapshot = InventoryLoader(ds).load()
-                pipeline = buildPipeline(snapshot)
+                pipeline = buildPipeline(snapshot, FakeFrequencyClient())
             }
     }
 
