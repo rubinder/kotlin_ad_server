@@ -7,8 +7,8 @@ boot, with the request hot path serving from memory only. Full design: `docs/sup
 ## Status
 
 - ✅ **Phase 1 — Skeleton + hot path**
-- ✅ **Phase 2 — Frequency service + Redis** (this commit)
-- ⏳ Phase 3 — Kafka + Flink aggregator
+- ✅ **Phase 2 — Frequency service + Redis**
+- ✅ **Phase 3 — Kafka + Flink aggregator** (this commit)
 - ⏳ Phase 4 — Observability (Micrometer, OpenTelemetry, Jaeger, Prometheus, Grafana)
 - ⏳ Phase 5 — Gatling load testing + profiling
 - ⏳ Phase 6 — Polish + final README
@@ -19,6 +19,7 @@ boot, with the request hot path serving from memory only. Full design: `docs/sup
 - `inventory-loader` — Postgres schema (Flyway) + loader → in-memory `InventorySnapshot`. ~50 sample campaigns.
 - `ad-server` — Ktor service exposing `POST /openrtb/bid`. Five-stage rule pipeline: blocking → frequency+compsep → floor → selection. Phase 1 uses a fake frequency client; Phase 2 wires gRPC to the standalone frequency-service.
 - `frequency-service` — standalone gRPC service (port 9090) backed by Lettuce → Redis. Owns the per-user impression counters and recent-win history. Read-only on the gRPC layer in Phase 2; Phase 3 adds Flink-driven increments.
+- `flink-impression-aggregator` — Apache Flink 1.20 streaming job. Consumes `impression-events` from Kafka (Avro via Confluent Schema Registry), keys by `(user, campaign)`, tumbling 10-second event-time windows, writes counts back to Redis through Lua-scripted atomic INCRBY+EXPIRE.
 
 ## Build
 
@@ -28,23 +29,29 @@ boot, with the request hot path serving from memory only. Full design: `docs/sup
 
 ## Run
 
+The fastest way to bring up the full stack:
+
 ```bash
-# Postgres (inventory)
-docker run -d --name kotlin-ad-pg \
-    -e POSTGRES_USER=kotlin_ad_server \
-    -e POSTGRES_PASSWORD=kotlin_ad_server \
-    -e POSTGRES_DB=kotlin_ad_server \
-    -p 5432:5432 \
-    postgres:16-alpine
+docker compose up -d
+./scripts/kafka-init-topics.sh
 
-# Redis (frequency counters + winhistory)
-docker run -d --name kotlin-ad-redis -p 6379:6379 redis:7-alpine
+# Run the frequency service (terminal 1)
+./gradlew :frequency-service:run
 
-# Run the frequency service first (ad-server tries to connect on boot)
-./gradlew :frequency-service:run &
+# Run the Flink aggregator (terminal 2)
+./gradlew :flink-impression-aggregator:run
 
-# Then run the ad-server
+# Run the ad-server (terminal 3)
 ./gradlew :ad-server:run
+
+# In a fourth terminal, send a bid request:
+curl -X POST http://localhost:8080/openrtb/bid \
+    -H "Content-Type: application/json" \
+    -d '{
+        "id": "demo-1",
+        "imp": [{ "id": "1", "banner": { "w": 300, "h": 250 } }],
+        "user": { "id": "demo-user" }
+    }'
 ```
 
 ## Smoke test
