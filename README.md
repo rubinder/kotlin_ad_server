@@ -6,8 +6,8 @@ boot, with the request hot path serving from memory only. Full design: `docs/sup
 
 ## Status
 
-- ✅ **Phase 1 — Skeleton + hot path** (this commit)
-- ⏳ Phase 2 — Frequency service + Redis (gRPC, Lettuce)
+- ✅ **Phase 1 — Skeleton + hot path**
+- ✅ **Phase 2 — Frequency service + Redis** (this commit)
 - ⏳ Phase 3 — Kafka + Flink aggregator
 - ⏳ Phase 4 — Observability (Micrometer, OpenTelemetry, Jaeger, Prometheus, Grafana)
 - ⏳ Phase 5 — Gatling load testing + profiling
@@ -18,6 +18,7 @@ boot, with the request hot path serving from memory only. Full design: `docs/sup
 - `common-protocol` — OpenRTB 2.6 subset DTOs (BidRequest, BidResponse, Imp, Banner, Site, Device, User).
 - `inventory-loader` — Postgres schema (Flyway) + loader → in-memory `InventorySnapshot`. ~50 sample campaigns.
 - `ad-server` — Ktor service exposing `POST /openrtb/bid`. Five-stage rule pipeline: blocking → frequency+compsep → floor → selection. Phase 1 uses a fake frequency client; Phase 2 wires gRPC to the standalone frequency-service.
+- `frequency-service` — standalone gRPC service (port 9090) backed by Lettuce → Redis. Owns the per-user impression counters and recent-win history. Read-only on the gRPC layer in Phase 2; Phase 3 adds Flink-driven increments.
 
 ## Build
 
@@ -28,7 +29,7 @@ boot, with the request hot path serving from memory only. Full design: `docs/sup
 ## Run
 
 ```bash
-# Start Postgres locally first (any way you like; example with Docker):
+# Postgres (inventory)
 docker run -d --name kotlin-ad-pg \
     -e POSTGRES_USER=kotlin_ad_server \
     -e POSTGRES_PASSWORD=kotlin_ad_server \
@@ -36,8 +37,13 @@ docker run -d --name kotlin-ad-pg \
     -p 5432:5432 \
     postgres:16-alpine
 
-# Run ad-server (migrates schema, seeds data via Phase 2+ tooling — Phase 1 expects pre-seeded DB
-# or use the smoke-test script below which handles seeding via Testcontainers):
+# Redis (frequency counters + winhistory)
+docker run -d --name kotlin-ad-redis -p 6379:6379 redis:7-alpine
+
+# Run the frequency service first (ad-server tries to connect on boot)
+./gradlew :frequency-service:run &
+
+# Then run the ad-server
 ./gradlew :ad-server:run
 ```
 
