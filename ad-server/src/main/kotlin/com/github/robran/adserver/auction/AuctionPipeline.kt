@@ -33,10 +33,11 @@ class AuctionPipeline(
         val totalNanos: Long
         try {
             var inner: BidResponse
-            totalNanos = measureNanoTime {
-                inner = runAuctionInner(request)
-                outcomeTag = if (inner.seatbid.isNotEmpty()) "filled" else "no-fill"
-            }
+            totalNanos =
+                measureNanoTime {
+                    inner = runAuctionInner(request)
+                    outcomeTag = if (inner.seatbid.isNotEmpty()) "filled" else "no-fill"
+                }
             response = inner
         } catch (t: Throwable) {
             metrics.requestTimer("error").record(0, java.util.concurrent.TimeUnit.NANOSECONDS)
@@ -63,20 +64,22 @@ class AuctionPipeline(
         for ((idx, stage) in stages.withIndex()) {
             val stageName = stageNames.getOrElse(idx) { "stage-$idx" }
             val newCurrent: List<Candidate>
-            val stageNanos: Long = measureNanoTime {
-                newCurrent = stage.evaluate(ctx, current)
-            }
+            val stageNanos: Long =
+                measureNanoTime {
+                    newCurrent = stage.evaluate(ctx, current)
+                }
             current = newCurrent
             metrics.stageTimer(stageName).record(stageNanos, java.util.concurrent.TimeUnit.NANOSECONDS)
             metrics.candidatesSurvivingSummary(stageName).record(current.size.toDouble())
             if (idx + 1 < sizes.size) sizes[idx + 1] = current.size
             if (current.isEmpty()) {
-                val outcome = when (idx) {
-                    0 -> Outcome.NO_FILL_BLOCKING
-                    1 -> Outcome.NO_FILL_FREQ_COMPSEP
-                    2 -> Outcome.NO_FILL_FLOOR
-                    else -> Outcome.NO_FILL_OTHER
-                }
+                val outcome =
+                    when (idx) {
+                        0 -> Outcome.NO_FILL_BLOCKING
+                        1 -> Outcome.NO_FILL_FREQ_COMPSEP
+                        2 -> Outcome.NO_FILL_FLOOR
+                        else -> Outcome.NO_FILL_OTHER
+                    }
                 emitOutcome(request, ctx, sizes, outcome, winner = null)
                 return BidResponse(id = request.id, nbr = noBidReasonFor(idx))
             }
@@ -88,25 +91,27 @@ class AuctionPipeline(
 
         return BidResponse(
             id = request.id,
-            seatbid = listOf(
-                SeatBid(
-                    seat = winner.campaign.advertiserId,
-                    bid = listOf(
-                        Bid(
-                            id = UUID.randomUUID().toString(),
-                            impid = ctx.imp.id,
-                            price = winner.bidPrice,
-                            cid = winner.campaign.id,
-                            crid = winner.creative.id,
-                            adid = winner.creative.id,
-                            cat = listOf(winner.campaign.category),
-                            w = winner.creative.width,
-                            h = winner.creative.height,
-                            adm = winner.creative.markup,
-                        ),
+            seatbid =
+                listOf(
+                    SeatBid(
+                        seat = winner.campaign.advertiserId,
+                        bid =
+                            listOf(
+                                Bid(
+                                    id = UUID.randomUUID().toString(),
+                                    impid = ctx.imp.id,
+                                    price = winner.bidPrice,
+                                    cid = winner.campaign.id,
+                                    crid = winner.creative.id,
+                                    adid = winner.creative.id,
+                                    cat = listOf(winner.campaign.category),
+                                    w = winner.creative.width,
+                                    h = winner.creative.height,
+                                    adm = winner.creative.markup,
+                                ),
+                            ),
                     ),
                 ),
-            ),
         )
     }
 
@@ -117,31 +122,36 @@ class AuctionPipeline(
         outcome: Outcome,
         winner: Candidate?,
     ) {
-        val event = AuctionResultEvent.newBuilder()
-            .setRequestId(request.id)
-            .setUserId(ctx.userId)
-            .setImpId(ctx.imp.id)
-            .setTsMillis(clock())
-            .setOutcome(outcome)
-            .setWinnerCampaignId(winner?.campaign?.id)
-            .setWinnerPrice(winner?.bidPrice)
-            .setCandidatesInitial(sizes[0])
-            .setCandidatesAfterBlocking(sizes[1])
-            .setCandidatesAfterFreqCompsep(sizes[2])
-            .setCandidatesAfterFloor(sizes[3])
-            .build()
+        val event =
+            AuctionResultEvent.newBuilder()
+                .setRequestId(request.id)
+                .setUserId(ctx.userId)
+                .setImpId(ctx.imp.id)
+                .setTsMillis(clock())
+                .setOutcome(outcome)
+                .setWinnerCampaignId(winner?.campaign?.id)
+                .setWinnerPrice(winner?.bidPrice)
+                .setCandidatesInitial(sizes[0])
+                .setCandidatesAfterBlocking(sizes[1])
+                .setCandidatesAfterFreqCompsep(sizes[2])
+                .setCandidatesAfterFloor(sizes[3])
+                .build()
         eventEmitter.emitAuctionResult(event)
     }
 
-    private fun emitImpression(ctx: AuctionContext, winner: Candidate) {
-        val event = ImpressionEvent.newBuilder()
-            .setUserId(ctx.userId)
-            .setCampaignId(winner.campaign.id)
-            .setCreativeId(winner.creative.id)
-            .setCategory(winner.campaign.category)
-            .setPrice(winner.bidPrice)
-            .setTsMillis(clock())
-            .build()
+    private fun emitImpression(
+        ctx: AuctionContext,
+        winner: Candidate,
+    ) {
+        val event =
+            ImpressionEvent.newBuilder()
+                .setUserId(ctx.userId)
+                .setCampaignId(winner.campaign.id)
+                .setCreativeId(winner.creative.id)
+                .setCategory(winner.campaign.category)
+                .setPrice(winner.bidPrice)
+                .setTsMillis(clock())
+                .build()
         eventEmitter.emitImpression(event)
     }
 
@@ -150,10 +160,11 @@ class AuctionPipeline(
             ?: request.user?.buyeruid
             ?: "anonymous"
 
-    private fun noBidReasonFor(stageIndex: Int): Int = when (stageIndex) {
-        0 -> NoBidReason.NO_CANDIDATES_AFTER_BLOCKING
-        1 -> NoBidReason.NO_CANDIDATES_AFTER_FREQ_COMPSEP
-        2 -> NoBidReason.NO_CANDIDATES_AFTER_FLOOR
-        else -> NoBidReason.UNKNOWN_ERROR
-    }
+    private fun noBidReasonFor(stageIndex: Int): Int =
+        when (stageIndex) {
+            0 -> NoBidReason.NO_CANDIDATES_AFTER_BLOCKING
+            1 -> NoBidReason.NO_CANDIDATES_AFTER_FREQ_COMPSEP
+            2 -> NoBidReason.NO_CANDIDATES_AFTER_FLOOR
+            else -> NoBidReason.UNKNOWN_ERROR
+        }
 }

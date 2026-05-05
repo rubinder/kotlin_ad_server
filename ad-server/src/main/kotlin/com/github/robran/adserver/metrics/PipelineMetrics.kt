@@ -17,7 +17,6 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry
  * accumulate but nothing is exposed.
  */
 class PipelineMetrics(private val registry: MeterRegistry) {
-
     fun requestTimer(outcome: String): Timer =
         Timer.builder(REQUEST_DURATION)
             .tag("outcome", outcome)

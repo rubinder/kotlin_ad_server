@@ -145,11 +145,12 @@ class KafkaEventEmitterTest {
         val deadline = System.currentTimeMillis() + 5_000
         var observed = 0L
         while (System.currentTimeMillis() < deadline && observed == 0L) {
-            observed = registry.timer(
-                "kafka.producer.send.duration",
-                "topic",
-                config.topicImpressionEvents,
-            ).count()
+            observed =
+                registry.timer(
+                    "kafka.producer.send.duration",
+                    "topic",
+                    config.topicImpressionEvents,
+                ).count()
             if (observed == 0L) Thread.sleep(50)
         }
         assertThat(observed).isEqualTo(1L)

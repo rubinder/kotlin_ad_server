@@ -9,10 +9,10 @@ import com.github.robran.adserver.auction.stages.BlockingPolicyStage
 import com.github.robran.adserver.auction.stages.FloorPriceStage
 import com.github.robran.adserver.auction.stages.FrequencyAndCompsepStage
 import com.github.robran.adserver.auction.stages.SelectionStage
-import com.github.robran.adserver.kafka.NoOpEventEmitter
 import com.github.robran.adserver.inventory.Campaign
 import com.github.robran.adserver.inventory.Creative
 import com.github.robran.adserver.inventory.InventorySnapshot
+import com.github.robran.adserver.kafka.NoOpEventEmitter
 import com.github.robran.adserver.protocol.openrtb.Banner
 import com.github.robran.adserver.protocol.openrtb.BidRequest
 import com.github.robran.adserver.protocol.openrtb.Imp
@@ -192,31 +192,34 @@ class AuctionPipelineTest {
         }
 
     @Test
-    fun `records request total + per-stage timers + candidates surviving`() = runTest {
-        val registry = io.micrometer.core.instrument.simple.SimpleMeterRegistry()
-        val s = InventorySnapshot(listOf(campaign("c1", bid = 2.0)), Instant.now())
-        val pipe = AuctionPipeline(
-            candidateBuilder = CandidateBuilder(s),
-            stages = listOf(
-                BlockingPolicyStage(),
-                FrequencyAndCompsepStage(FakeFrequencyClient()),
-                FloorPriceStage(),
-                SelectionStage(Random(42)),
-            ),
-            eventEmitter = NoOpEventEmitter,
-            meterRegistry = registry,
-        )
-        pipe.runAuction(req())
+    fun `records request total + per-stage timers + candidates surviving`() =
+        runTest {
+            val registry = io.micrometer.core.instrument.simple.SimpleMeterRegistry()
+            val s = InventorySnapshot(listOf(campaign("c1", bid = 2.0)), Instant.now())
+            val pipe =
+                AuctionPipeline(
+                    candidateBuilder = CandidateBuilder(s),
+                    stages =
+                        listOf(
+                            BlockingPolicyStage(),
+                            FrequencyAndCompsepStage(FakeFrequencyClient()),
+                            FloorPriceStage(),
+                            SelectionStage(Random(42)),
+                        ),
+                    eventEmitter = NoOpEventEmitter,
+                    meterRegistry = registry,
+                )
+            pipe.runAuction(req())
 
-        val requestTimer = registry.timer("adserver.request.duration", "outcome", "filled")
-        assertThat(requestTimer.count()).isEqualTo(1L)
+            val requestTimer = registry.timer("adserver.request.duration", "outcome", "filled")
+            assertThat(requestTimer.count()).isEqualTo(1L)
 
-        for (stage in listOf("blocking", "freq+compsep", "floor", "selection")) {
-            val t = registry.timer("adserver.stage.duration", "stage", stage)
-            assertThat(t.count()).isEqualTo(1L)
+            for (stage in listOf("blocking", "freq+compsep", "floor", "selection")) {
+                val t = registry.timer("adserver.stage.duration", "stage", stage)
+                assertThat(t.count()).isEqualTo(1L)
+            }
+
+            val survivingInitial = registry.summary("adserver.candidates.surviving", "stage", "initial")
+            assertThat(survivingInitial.count()).isEqualTo(1L)
         }
-
-        val survivingInitial = registry.summary("adserver.candidates.surviving", "stage", "initial")
-        assertThat(survivingInitial.count()).isEqualTo(1L)
-    }
 }

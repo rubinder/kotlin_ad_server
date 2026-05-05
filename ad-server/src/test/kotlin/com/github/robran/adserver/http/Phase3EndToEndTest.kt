@@ -12,7 +12,6 @@ import com.github.robran.adserver.flink.FlinkSourceConfig
 import com.github.robran.adserver.flink.ImpressionAggregatorJob
 import com.github.robran.adserver.flink.RedisSinkConfig
 import com.github.robran.adserver.frequency.EnrichService
-import com.github.robran.adserver.frequency.RedisClient as FreqRedisClient
 import com.github.robran.adserver.inventory.InventoryLoader
 import com.github.robran.adserver.inventory.SeedLoader
 import com.github.robran.adserver.kafka.KafkaEventEmitter
@@ -49,21 +48,24 @@ import org.testcontainers.containers.PostgreSQLContainer
 import org.testcontainers.kafka.ConfluentKafkaContainer
 import org.testcontainers.utility.DockerImageName
 import java.util.UUID
+import com.github.robran.adserver.frequency.RedisClient as FreqRedisClient
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class Phase3EndToEndTest {
+    private val postgres =
+        PostgreSQLContainer(DockerImageName.parse("postgres:16-alpine"))
+            .withDatabaseName("kotlin_ad_server_test")
+            .withUsername("test")
+            .withPassword("test")
 
-    private val postgres = PostgreSQLContainer(DockerImageName.parse("postgres:16-alpine"))
-        .withDatabaseName("kotlin_ad_server_test")
-        .withUsername("test")
-        .withPassword("test")
+    private val redis: GenericContainer<*> =
+        GenericContainer(DockerImageName.parse("redis:7-alpine"))
+            .withExposedPorts(6379)
 
-    private val redis: GenericContainer<*> = GenericContainer(DockerImageName.parse("redis:7-alpine"))
-        .withExposedPorts(6379)
-
-    private val kafka: ConfluentKafkaContainer = ConfluentKafkaContainer(
-        DockerImageName.parse("confluentinc/cp-kafka:7.7.0"),
-    )
+    private val kafka: ConfluentKafkaContainer =
+        ConfluentKafkaContainer(
+            DockerImageName.parse("confluentinc/cp-kafka:7.7.0"),
+        )
 
     private val mockScope = "phase3-e2e-${UUID.randomUUID()}"
     private val mockSchemaUrl = "mock://$mockScope"
@@ -76,12 +78,13 @@ class Phase3EndToEndTest {
 
     private val freqServerName = InProcessServerBuilder.generateName()
 
-    private val miniCluster = MiniClusterWithClientResource(
-        MiniClusterResourceConfiguration.Builder()
-            .setNumberSlotsPerTaskManager(2)
-            .setNumberTaskManagers(1)
-            .build(),
-    )
+    private val miniCluster =
+        MiniClusterWithClientResource(
+            MiniClusterResourceConfiguration.Builder()
+                .setNumberSlotsPerTaskManager(2)
+                .setNumberTaskManagers(1)
+                .build(),
+        )
 
     @BeforeAll
     fun setup() {
@@ -92,27 +95,30 @@ class Phase3EndToEndTest {
 
         // Hydrate inventory from Postgres.
         InventoryLoader.migrate(postgres.jdbcUrl, postgres.username, postgres.password)
-        val snapshot = InventoryLoader.pooledDataSource(postgres.jdbcUrl, postgres.username, postgres.password)
-            .use { ds ->
-                SeedLoader.seed(ds)
-                InventoryLoader(ds).load()
-            }
+        val snapshot =
+            InventoryLoader.pooledDataSource(postgres.jdbcUrl, postgres.username, postgres.password)
+                .use { ds ->
+                    SeedLoader.seed(ds)
+                    InventoryLoader(ds).load()
+                }
 
         // Boot frequency-service against the test Redis.
         val redisUrl = "redis://${redis.host}:${redis.getMappedPort(6379)}"
         freqRedis = FreqRedisClient.connect(redisUrl)
-        freqServer = InProcessServerBuilder.forName(freqServerName)
-            .directExecutor()
-            .addService(EnrichService(freqRedis))
-            .build()
-            .start()
+        freqServer =
+            InProcessServerBuilder.forName(freqServerName)
+                .directExecutor()
+                .addService(EnrichService(freqRedis))
+                .build()
+                .start()
         freqChannel = InProcessChannelBuilder.forName(freqServerName).directExecutor().build()
         val grpcClient = GrpcFrequencyClient(freqChannel, timeoutMs = 1_000L)
 
         // Pre-create Kafka topics so Flink doesn't fail on startup before the first produce.
-        val adminProps = java.util.Properties().apply {
-            put(org.apache.kafka.clients.admin.AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.bootstrapServers)
-        }
+        val adminProps =
+            java.util.Properties().apply {
+                put(org.apache.kafka.clients.admin.AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.bootstrapServers)
+            }
         org.apache.kafka.clients.admin.AdminClient.create(adminProps).use { admin ->
             admin.createTopics(
                 listOf(
@@ -123,42 +129,52 @@ class Phase3EndToEndTest {
         }
 
         // Build the ad-server's Kafka emitter.
-        val kafkaConfig = KafkaConfig(
-            bootstrapServers = kafka.bootstrapServers,
-            schemaRegistryUrl = mockSchemaUrl,
-            topicAuctionResults = "auction-results-test",
-            topicImpressionEvents = "impression-events-test",
-            lingerMs = 0,
-            acks = "all",
-        )
+        val kafkaConfig =
+            KafkaConfig(
+                bootstrapServers = kafka.bootstrapServers,
+                schemaRegistryUrl = mockSchemaUrl,
+                topicAuctionResults = "auction-results-test",
+                topicImpressionEvents = "impression-events-test",
+                lingerMs = 0,
+                acks = "all",
+            )
         val producer = ProducerFactory.avroProducer(kafkaConfig)
         emitter = KafkaEventEmitter(producer, kafkaConfig)
         pipeline = buildPipeline(snapshot, grpcClient, emitter)
 
         // Start the Flink job.
-        val flinkConfig = FlinkAppConfig(
-            source = FlinkSourceConfig(
-                bootstrapServers = kafka.bootstrapServers,
-                schemaRegistryUrl = mockSchemaUrl,
-                topicImpressionEvents = "impression-events-test",
-                groupId = "phase3-e2e",
-            ),
-            sink = RedisSinkConfig(
-                url = redisUrl,
-                capWindowSeconds = 86400,
-                winhistoryWindowSeconds = 3600,
-            ),
-            checkpointIntervalMs = 5_000,
-            windowSeconds = 5,
-            allowedLatenessSeconds = 1,
-        )
+        val flinkConfig =
+            FlinkAppConfig(
+                source =
+                    FlinkSourceConfig(
+                        bootstrapServers = kafka.bootstrapServers,
+                        schemaRegistryUrl = mockSchemaUrl,
+                        topicImpressionEvents = "impression-events-test",
+                        groupId = "phase3-e2e",
+                    ),
+                sink =
+                    RedisSinkConfig(
+                        url = redisUrl,
+                        capWindowSeconds = 86400,
+                        winhistoryWindowSeconds = 3600,
+                    ),
+                checkpointIntervalMs = 5_000,
+                windowSeconds = 5,
+                allowedLatenessSeconds = 1,
+            )
         val env = StreamExecutionEnvironment.getExecutionEnvironment()
         env.enableCheckpointing(flinkConfig.checkpointIntervalMs, CheckpointingMode.EXACTLY_ONCE)
         env.parallelism = 1
         ImpressionAggregatorJob.build(env, flinkConfig)
         Thread {
-            try { env.execute("phase3-e2e-flink") } catch (_: InterruptedException) {}
-        }.also { it.isDaemon = true; it.start() }
+            try {
+                env.execute("phase3-e2e-flink")
+            } catch (_: InterruptedException) {
+            }
+        }.also {
+            it.isDaemon = true
+            it.start()
+        }
     }
 
     @AfterAll
@@ -192,16 +208,17 @@ class Phase3EndToEndTest {
             val httpClient = createClient { install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) } }
 
             repeat(30) {
-                val response = httpClient.post("/openrtb/bid") {
-                    contentType(ContentType.Application.Json)
-                    setBody(
-                        BidRequest(
-                            id = "req-${System.nanoTime()}",
-                            imp = listOf(Imp(id = "1", banner = Banner(300, 250))),
-                            user = User(id = userId),
-                        ),
-                    )
-                }
+                val response =
+                    httpClient.post("/openrtb/bid") {
+                        contentType(ContentType.Application.Json)
+                        setBody(
+                            BidRequest(
+                                id = "req-${System.nanoTime()}",
+                                imp = listOf(Imp(id = "1", banner = Banner(300, 250))),
+                                user = User(id = userId),
+                            ),
+                        )
+                    }
                 response.body<BidResponse>()
             }
         }
@@ -210,14 +227,15 @@ class Phase3EndToEndTest {
         // with a timestamp 60 seconds in the future. Without this, the event-time window never
         // fires because no subsequent events arrive to advance the watermark.
         val futureTs = System.currentTimeMillis() + 60_000L
-        val nudge = com.github.robran.adserver.protocol.events.ImpressionEvent.newBuilder()
-            .setUserId("watermark-nudge")
-            .setCampaignId("nudge-camp")
-            .setCreativeId("nudge-cre")
-            .setCategory("IAB1")
-            .setPrice(0.0)
-            .setTsMillis(futureTs)
-            .build()
+        val nudge =
+            com.github.robran.adserver.protocol.events.ImpressionEvent.newBuilder()
+                .setUserId("watermark-nudge")
+                .setCampaignId("nudge-camp")
+                .setCreativeId("nudge-cre")
+                .setCategory("IAB1")
+                .setPrice(0.0)
+                .setTsMillis(futureTs)
+                .build()
         emitter.emitImpression(nudge)
         Thread.sleep(2_000) // give the producer time to flush
 
@@ -225,9 +243,10 @@ class Phase3EndToEndTest {
         // give it generous slack. Blocking Thread.sleep here is fine — we're on a plain JUnit thread.
         val deadline = System.currentTimeMillis() + 120_000
         var totalCounted = 0L
-        val sync = io.lettuce.core.RedisClient.create(
-            io.lettuce.core.RedisURI.create("redis://${redis.host}:${redis.getMappedPort(6379)}"),
-        ).connect().sync()
+        val sync =
+            io.lettuce.core.RedisClient.create(
+                io.lettuce.core.RedisURI.create("redis://${redis.host}:${redis.getMappedPort(6379)}"),
+            ).connect().sync()
         while (System.currentTimeMillis() < deadline) {
             val keys = sync.keys("freq:$userId:*")
             totalCounted = keys.sumOf { (sync.get(it)?.toLongOrNull() ?: 0L) }

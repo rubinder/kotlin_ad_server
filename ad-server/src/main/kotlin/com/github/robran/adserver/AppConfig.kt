@@ -44,7 +44,6 @@ data class AppConfig(
     val metrics: MetricsConfig,
 ) {
     companion object {
-        fun load(raw: Config = ConfigFactory.load()): AppConfig =
-            raw.extract("adserver")
+        fun load(raw: Config = ConfigFactory.load()): AppConfig = raw.extract("adserver")
     }
 }
