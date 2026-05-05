@@ -209,8 +209,8 @@ import io.micrometer.core.instrument.binder.jvm.JvmMemoryMetrics
 import io.micrometer.core.instrument.binder.jvm.JvmThreadMetrics
 import io.micrometer.core.instrument.binder.system.ProcessorMetrics
 import io.micrometer.core.instrument.binder.system.UptimeMetrics
-import io.micrometer.prometheus.PrometheusConfig
-import io.micrometer.prometheus.PrometheusMeterRegistry
+import io.micrometer.prometheusmetrics.PrometheusConfig
+import io.micrometer.prometheusmetrics.PrometheusMeterRegistry
 
 /**
  * Builds the process-wide Prometheus registry, attaches JVM/process binders, and applies common
@@ -245,7 +245,7 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
-import io.micrometer.prometheus.PrometheusMeterRegistry
+import io.micrometer.prometheusmetrics.PrometheusMeterRegistry
 
 fun Route.metricsRoutes(registry: PrometheusMeterRegistry) {
     get("/metrics") {
@@ -264,7 +264,7 @@ Read the current file. Make these changes:
 import com.github.robran.adserver.metrics.MeterRegistryFactory
 import com.github.robran.adserver.http.metricsRoutes
 import io.ktor.server.metrics.micrometer.MicrometerMetrics
-import io.micrometer.prometheus.PrometheusMeterRegistry
+import io.micrometer.prometheusmetrics.PrometheusMeterRegistry
 ```
 
 (b) In `main()`, **before** building the pipeline, construct the registry:
@@ -334,7 +334,7 @@ application {
     adServerModule(
         HealthState().apply { ready.set(true) },
         pipeline,
-        io.micrometer.prometheus.PrometheusMeterRegistry(io.micrometer.prometheus.PrometheusConfig.DEFAULT),
+        io.micrometer.prometheusmetrics.PrometheusMeterRegistry(io.micrometer.prometheusmetrics.PrometheusConfig.DEFAULT),
     )
 }
 ```
@@ -1263,8 +1263,8 @@ import io.micrometer.core.instrument.binder.jvm.JvmMemoryMetrics
 import io.micrometer.core.instrument.binder.jvm.JvmThreadMetrics
 import io.micrometer.core.instrument.binder.system.ProcessorMetrics
 import io.micrometer.core.instrument.binder.system.UptimeMetrics
-import io.micrometer.prometheus.PrometheusConfig
-import io.micrometer.prometheus.PrometheusMeterRegistry
+import io.micrometer.prometheusmetrics.PrometheusConfig
+import io.micrometer.prometheusmetrics.PrometheusMeterRegistry
 
 object MeterRegistryFactory {
     fun build(config: MetricsConfig): PrometheusMeterRegistry {
@@ -1291,7 +1291,7 @@ object MeterRegistryFactory {
 package com.github.robran.adserver.frequency.metrics
 
 import com.sun.net.httpserver.HttpServer
-import io.micrometer.prometheus.PrometheusMeterRegistry
+import io.micrometer.prometheusmetrics.PrometheusMeterRegistry
 import org.slf4j.LoggerFactory
 import java.net.InetSocketAddress
 
@@ -1412,7 +1412,7 @@ import java.net.URL
 
 class MetricsHttpServerTest {
 
-    private lateinit var registry: io.micrometer.prometheus.PrometheusMeterRegistry
+    private lateinit var registry: io.micrometer.prometheusmetrics.PrometheusMeterRegistry
     private lateinit var server: MetricsHttpServer
     private val port = freePort()
 
@@ -1589,8 +1589,8 @@ In `EnrichServiceIntegrationTest.kt`, add a new test (using the existing `redisC
         redisClient.zadd("winhistory:user-metrics", "c1:IAB1" to 1.0)
 
         // Use a custom EnrichService with a recording registry, in-process gRPC.
-        val recordingRegistry = io.micrometer.prometheus.PrometheusMeterRegistry(
-            io.micrometer.prometheus.PrometheusConfig.DEFAULT,
+        val recordingRegistry = io.micrometer.prometheusmetrics.PrometheusMeterRegistry(
+            io.micrometer.prometheusmetrics.PrometheusConfig.DEFAULT,
         )
         val recordingService = EnrichService(redisClient, recordingRegistry)
         val testServerName = io.grpc.inprocess.InProcessServerBuilder.generateName()
