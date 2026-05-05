@@ -19,8 +19,11 @@ import org.apache.kafka.common.serialization.StringDeserializer
 import org.apache.kafka.common.serialization.StringSerializer
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
+import org.junit.jupiter.api.MethodOrderer
+import org.junit.jupiter.api.Order
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
+import org.junit.jupiter.api.TestMethodOrder
 import org.junit.jupiter.api.Timeout
 import org.testcontainers.kafka.ConfluentKafkaContainer
 import org.testcontainers.utility.DockerImageName
@@ -29,6 +32,7 @@ import java.util.Properties
 import java.util.UUID
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@TestMethodOrder(MethodOrderer.OrderAnnotation::class)
 class KafkaEventEmitterTest {
     private val kafka: ConfluentKafkaContainer =
         ConfluentKafkaContainer(
@@ -41,6 +45,7 @@ class KafkaEventEmitterTest {
     private lateinit var producer: KafkaProducer<String, Any>
     private lateinit var emitter: KafkaEventEmitter
     private lateinit var config: KafkaConfig
+    private lateinit var registry: io.micrometer.core.instrument.simple.SimpleMeterRegistry
 
     @BeforeAll
     fun setup() {
@@ -63,7 +68,8 @@ class KafkaEventEmitterTest {
                 put(ProducerConfig.ACKS_CONFIG, "1")
             }
         producer = KafkaProducer(props)
-        emitter = KafkaEventEmitter(producer, config)
+        registry = io.micrometer.core.instrument.simple.SimpleMeterRegistry()
+        emitter = KafkaEventEmitter(producer, config, meterRegistry = registry)
     }
 
     @AfterAll
@@ -73,6 +79,7 @@ class KafkaEventEmitterTest {
         MockSchemaRegistry.dropScope(mockSchemaRegistryScope)
     }
 
+    @Order(1)
     @Timeout(value = 30)
     @Test
     fun `emitImpression sends an Avro-encoded record to the configured topic`() {
@@ -93,6 +100,7 @@ class KafkaEventEmitterTest {
         assertThat(received.campaignId.toString()).isEqualTo("camp-001")
     }
 
+    @Order(2)
     @Timeout(value = 30)
     @Test
     fun `emitAuctionResult sends an Avro-encoded record with outcome enum`() {
@@ -116,6 +124,35 @@ class KafkaEventEmitterTest {
         val received = pollOne<AuctionResultEvent>(config.topicAuctionResults)
         assertThat(received.outcome).isEqualTo(Outcome.FILLED)
         assertThat(received.winnerCampaignId.toString()).isEqualTo("camp-007")
+    }
+
+    @Order(3)
+    @Timeout(value = 30)
+    @Test
+    fun `records kafka_producer_send_duration tagged by topic`() {
+        emitter.emitImpression(
+            ImpressionEvent.newBuilder()
+                .setUserId("u1")
+                .setCampaignId("c1")
+                .setCreativeId("cre1")
+                .setCategory("IAB1")
+                .setPrice(1.0)
+                .setTsMillis(1L)
+                .build(),
+        )
+        producer.flush()
+        // Wait for the async callback to record the timing.
+        val deadline = System.currentTimeMillis() + 5_000
+        var observed = 0L
+        while (System.currentTimeMillis() < deadline && observed == 0L) {
+            observed = registry.timer(
+                "kafka.producer.send.duration",
+                "topic",
+                config.topicImpressionEvents,
+            ).count()
+            if (observed == 0L) Thread.sleep(50)
+        }
+        assertThat(observed).isEqualTo(1L)
     }
 
     private inline fun <reified T> pollOne(topic: String): T {

@@ -43,9 +43,13 @@ class GrpcFrequencyClientTest {
         server.shutdownNow()
     }
 
-    private fun newClient(timeoutMs: Long = 8L): GrpcFrequencyClient {
+    private fun newClient(
+        timeoutMs: Long = 8L,
+        registry: io.micrometer.core.instrument.MeterRegistry =
+            io.micrometer.core.instrument.simple.SimpleMeterRegistry(),
+    ): GrpcFrequencyClient {
         val channel = InProcessChannelBuilder.forName(serverName).directExecutor().build()
-        return GrpcFrequencyClient(channel, timeoutMs)
+        return GrpcFrequencyClient(channel, timeoutMs, registry)
     }
 
     @Test
@@ -113,4 +117,42 @@ class GrpcFrequencyClientTest {
             assertThat(req.userId).isEqualTo("user-zalia")
             assertThat(req.campaignIdsList.toList()).containsExactlyInAnyOrder("camp-001", "camp-002", "camp-003")
         }
+
+    @Test
+    fun `records frequency_grpc_duration with outcome=ok on success`() = runTest {
+        fakeBehavior = { _ -> EnrichResponse.getDefaultInstance() }
+        val registry = io.micrometer.core.instrument.simple.SimpleMeterRegistry()
+        val client = newClient(timeoutMs = 5_000L, registry = registry)
+        client.enrich("u1", listOf("c1"))
+
+        val ok = registry.timer("frequency.grpc.duration", "outcome", "ok")
+        assertThat(ok.count()).isEqualTo(1L)
+    }
+
+    @Test
+    fun `records frequency_grpc_duration with outcome=timeout on slow server`() = runTest {
+        fakeBehavior = { _ ->
+            kotlinx.coroutines.delay(50)
+            EnrichResponse.getDefaultInstance()
+        }
+        val registry = io.micrometer.core.instrument.simple.SimpleMeterRegistry()
+        val client = newClient(timeoutMs = 8L, registry = registry)
+        client.enrich("u1", listOf("c1"))
+
+        val to = registry.timer("frequency.grpc.duration", "outcome", "timeout")
+        assertThat(to.count()).isEqualTo(1L)
+    }
+
+    @Test
+    fun `records frequency_grpc_duration with outcome=error on server failure`() = runTest {
+        fakeBehavior = { _ ->
+            throw io.grpc.StatusRuntimeException(io.grpc.Status.UNAVAILABLE)
+        }
+        val registry = io.micrometer.core.instrument.simple.SimpleMeterRegistry()
+        val client = newClient(timeoutMs = 5_000L, registry = registry)
+        client.enrich("u1", listOf("c1"))
+
+        val err = registry.timer("frequency.grpc.duration", "outcome", "error")
+        assertThat(err.count()).isEqualTo(1L)
+    }
 }

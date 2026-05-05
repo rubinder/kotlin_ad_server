@@ -8,8 +8,8 @@ boot, with the request hot path serving from memory only. Full design: `docs/sup
 
 - ✅ **Phase 1 — Skeleton + hot path**
 - ✅ **Phase 2 — Frequency service + Redis**
-- ✅ **Phase 3 — Kafka + Flink aggregator** (this commit)
-- ⏳ Phase 4 — Observability (Micrometer, OpenTelemetry, Jaeger, Prometheus, Grafana)
+- ✅ **Phase 3 — Kafka + Flink aggregator**
+- 🟡 **Phase 4 — Observability** (4a metrics ✅; 4b tracing pending) (this commit)
 - ⏳ Phase 5 — Gatling load testing + profiling
 - ⏳ Phase 6 — Polish + final README
 
@@ -53,6 +53,28 @@ curl -X POST http://localhost:8080/openrtb/bid \
         "user": { "id": "demo-user" }
     }'
 ```
+
+## Observability
+
+`docker compose up -d` brings up Prometheus (port 9090) and Grafana (port 3000) alongside the rest.
+
+- ad-server `/metrics` — `http://localhost:8080/metrics`
+- frequency-service `/metrics` — `http://localhost:9091/metrics`
+- Prometheus targets — `http://localhost:9090/targets`
+- Grafana dashboard — `http://localhost:3000/d/kotlin-ad-server` (anonymous admin)
+
+Headline metrics:
+
+| Metric | Type | Tags | Source |
+|---|---|---|---|
+| `adserver.request.duration` | Timer (histogram) | `outcome` | ad-server |
+| `adserver.stage.duration` | Timer (histogram) | `stage` | ad-server |
+| `adserver.candidates.surviving` | DistributionSummary | `stage` | ad-server |
+| `frequency.grpc.duration` | Timer (histogram) | `outcome` | ad-server |
+| `kafka.producer.send.duration` | Timer (histogram) | `topic` | ad-server |
+| `inventory.snapshot.size` | Gauge | — | ad-server |
+| `inventory.snapshot.age_seconds` | Gauge | — | ad-server |
+| `redis.lookup.duration` | Timer (histogram) | `op` | frequency-service |
 
 ## Smoke test
 

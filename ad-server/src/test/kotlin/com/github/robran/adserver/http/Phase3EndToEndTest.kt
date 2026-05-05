@@ -182,7 +182,13 @@ class Phase3EndToEndTest {
         // Drive 30 HTTP requests through the ad-server. Use testApplication only for the HTTP
         // phase so that its coroutine scope exits cleanly before we start blocking polls.
         testApplication {
-            application { adServerModule(HealthState().apply { ready.set(true) }, pipeline) }
+            application {
+                adServerModule(
+                    HealthState().apply { ready.set(true) },
+                    pipeline,
+                    io.micrometer.prometheusmetrics.PrometheusMeterRegistry(io.micrometer.prometheusmetrics.PrometheusConfig.DEFAULT),
+                )
+            }
             val httpClient = createClient { install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) } }
 
             repeat(30) {

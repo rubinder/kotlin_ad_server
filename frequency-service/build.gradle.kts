@@ -18,6 +18,9 @@ dependencies {
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.coroutines.reactor)
 
+    implementation(libs.micrometer.core)
+    implementation(libs.micrometer.registry.prometheus)
+
     // Config + logging
     implementation(libs.config4k)
     implementation(libs.logback.classic)

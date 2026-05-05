@@ -119,4 +119,44 @@ class EnrichServiceIntegrationTest {
         // with code UNKNOWN by default. We accept any throwable here as proof the call was rejected.
         assertThat(ex != null).isEqualTo(true)
     }
+
+    @Test
+    fun `enrichForAuction records redis_lookup_duration with op tags`() = runTest {
+        // Pre-populate Redis to ensure both ops touch real data.
+        redisClient.set("freq:user-metrics:c1", "1")
+        redisClient.zadd("winhistory:user-metrics", "c1:IAB1" to 1.0)
+
+        // Use a custom EnrichService with a recording registry, in-process gRPC.
+        val recordingRegistry = io.micrometer.prometheusmetrics.PrometheusMeterRegistry(
+            io.micrometer.prometheusmetrics.PrometheusConfig.DEFAULT,
+        )
+        val recordingService = EnrichService(redisClient, recordingRegistry)
+        val testServerName = io.grpc.inprocess.InProcessServerBuilder.generateName()
+        val testServer = io.grpc.inprocess.InProcessServerBuilder.forName(testServerName)
+            .directExecutor()
+            .addService(recordingService)
+            .build()
+            .start()
+        val testChannel = io.grpc.inprocess.InProcessChannelBuilder.forName(testServerName)
+            .directExecutor()
+            .build()
+        val testStub = com.github.robran.adserver.protocol.frequency.FrequencyGrpcKt.FrequencyCoroutineStub(testChannel)
+
+        try {
+            testStub.enrichForAuction(
+                com.github.robran.adserver.protocol.frequency.EnrichRequest.newBuilder()
+                    .setUserId("user-metrics")
+                    .addCampaignIds("c1")
+                    .build(),
+            )
+            val mget = recordingRegistry.timer("redis.lookup.duration", "op", "mget_freq")
+            val zrange = recordingRegistry.timer("redis.lookup.duration", "op", "zrange_winhistory")
+            assertThat(mget.count()).isEqualTo(1L)
+            assertThat(zrange.count()).isEqualTo(1L)
+        } finally {
+            testChannel.shutdownNow()
+            testServer.shutdownNow()
+            recordingRegistry.close()
+        }
+    }
 }

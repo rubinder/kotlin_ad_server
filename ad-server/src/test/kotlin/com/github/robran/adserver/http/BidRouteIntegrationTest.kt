@@ -80,7 +80,11 @@ class BidRouteIntegrationTest {
     fun `POST openrtb bid returns a winning Bid for a 300x250 request`() =
         testApplication {
             application {
-                adServerModule(HealthState().apply { ready.set(true) }, pipeline)
+                adServerModule(
+                    HealthState().apply { ready.set(true) },
+                    pipeline,
+                    io.micrometer.prometheusmetrics.PrometheusMeterRegistry(io.micrometer.prometheusmetrics.PrometheusConfig.DEFAULT),
+                )
             }
             val client =
                 createClient {
@@ -107,7 +111,11 @@ class BidRouteIntegrationTest {
     fun `POST openrtb bid honors bcat blocking — empty result when all categories blocked`() =
         testApplication {
             application {
-                adServerModule(HealthState().apply { ready.set(true) }, pipeline)
+                adServerModule(
+                    HealthState().apply { ready.set(true) },
+                    pipeline,
+                    io.micrometer.prometheusmetrics.PrometheusMeterRegistry(io.micrometer.prometheusmetrics.PrometheusConfig.DEFAULT),
+                )
             }
             val client =
                 createClient {
@@ -138,7 +146,11 @@ class BidRouteIntegrationTest {
     fun `POST openrtb bid honors floor price`() =
         testApplication {
             application {
-                adServerModule(HealthState().apply { ready.set(true) }, pipeline)
+                adServerModule(
+                    HealthState().apply { ready.set(true) },
+                    pipeline,
+                    io.micrometer.prometheusmetrics.PrometheusMeterRegistry(io.micrometer.prometheusmetrics.PrometheusConfig.DEFAULT),
+                )
             }
             val client =
                 createClient {
@@ -159,7 +171,11 @@ class BidRouteIntegrationTest {
     fun `healthz returns 200`() =
         testApplication {
             application {
-                adServerModule(HealthState().apply { ready.set(true) }, pipeline)
+                adServerModule(
+                    HealthState().apply { ready.set(true) },
+                    pipeline,
+                    io.micrometer.prometheusmetrics.PrometheusMeterRegistry(io.micrometer.prometheusmetrics.PrometheusConfig.DEFAULT),
+                )
             }
             val response = client.get("/healthz")
             assertThat(response.status).isEqualTo(HttpStatusCode.OK)
@@ -169,7 +185,11 @@ class BidRouteIntegrationTest {
     fun `POST openrtb bid returns 400 when imp list is empty`() =
         testApplication {
             application {
-                adServerModule(HealthState().apply { ready.set(true) }, pipeline)
+                adServerModule(
+                    HealthState().apply { ready.set(true) },
+                    pipeline,
+                    io.micrometer.prometheusmetrics.PrometheusMeterRegistry(io.micrometer.prometheusmetrics.PrometheusConfig.DEFAULT),
+                )
             }
             val client =
                 createClient {

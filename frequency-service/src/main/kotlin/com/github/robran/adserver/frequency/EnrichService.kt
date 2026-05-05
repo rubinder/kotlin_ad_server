@@ -3,19 +3,22 @@ package com.github.robran.adserver.frequency
 import com.github.robran.adserver.protocol.frequency.EnrichRequest
 import com.github.robran.adserver.protocol.frequency.EnrichResponse
 import com.github.robran.adserver.protocol.frequency.FrequencyGrpcKt
+import io.micrometer.core.instrument.MeterRegistry
+import io.micrometer.core.instrument.Timer
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import org.slf4j.LoggerFactory
+import java.util.concurrent.TimeUnit
+import kotlin.system.measureNanoTime
 
-/**
- * Read-side implementation of the Frequency gRPC service. Consults Redis for per-campaign counts
- * and the user's recent-win history, returns both in one response.
- *
- * Phase 2 is read-only on the gRPC layer. Increments come from Phase 3's Flink sink via Lettuce
- * directly — see spec section 7.2.
- */
-class EnrichService(private val redis: RedisClient) :
-    FrequencyGrpcKt.FrequencyCoroutineImplBase() {
+class EnrichService(
+    private val redis: RedisClient,
+    meterRegistry: MeterRegistry = SimpleMeterRegistry(),
+) : FrequencyGrpcKt.FrequencyCoroutineImplBase() {
 
     private val log = LoggerFactory.getLogger(javaClass)
+
+    private val mgetTimer: Timer = lookupTimer(meterRegistry, "mget_freq")
+    private val zrangeTimer: Timer = lookupTimer(meterRegistry, "zrange_winhistory")
 
     override suspend fun enrichForAuction(request: EnrichRequest): EnrichResponse {
         val userId = request.userId
@@ -26,16 +29,21 @@ class EnrichService(private val redis: RedisClient) :
             emptyMap()
         } else {
             val freqKeys = campaignIds.map { "freq:$userId:$it" }
-            val values = redis.mget(freqKeys)
+            var values: List<String?>
+            val nanos = measureNanoTime { values = redis.mget(freqKeys) }
+            mgetTimer.record(nanos, TimeUnit.NANOSECONDS)
             campaignIds.zip(values).mapNotNull { (campaignId, raw) ->
                 val count = raw?.toIntOrNull() ?: return@mapNotNull null
                 if (count <= 0) null else campaignId to count
             }.toMap()
         }
 
-        // Read the entire winhistory zset; Phase 3 trims it to a 1h window so this is bounded.
         val winhistoryKey = "winhistory:$userId"
-        val rawWins = redis.zrangeByScore(winhistoryKey, 0.0, Double.POSITIVE_INFINITY)
+        var rawWins: List<String>
+        val nanos = measureNanoTime {
+            rawWins = redis.zrangeByScore(winhistoryKey, 0.0, Double.POSITIVE_INFINITY)
+        }
+        zrangeTimer.record(nanos, TimeUnit.NANOSECONDS)
         val recentCategories = rawWins.mapNotNullTo(mutableSetOf()) { entry ->
             val sep = entry.indexOf(':')
             if (sep < 0) null else entry.substring(sep + 1)
@@ -45,5 +53,15 @@ class EnrichService(private val redis: RedisClient) :
             .putAllFreqCounts(freqCounts)
             .addAllRecentCategories(recentCategories)
             .build()
+    }
+
+    companion object {
+        const val METRIC_NAME = "redis.lookup.duration"
+
+        private fun lookupTimer(registry: MeterRegistry, op: String): Timer =
+            Timer.builder(METRIC_NAME)
+                .tag("op", op)
+                .publishPercentileHistogram()
+                .register(registry)
     }
 }
