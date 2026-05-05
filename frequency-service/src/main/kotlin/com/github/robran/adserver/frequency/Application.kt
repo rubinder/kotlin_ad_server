@@ -12,7 +12,7 @@ fun main() {
     val meterRegistry = MeterRegistryFactory.build(config.metrics)
 
     val redis = RedisClient.connect(config.redis.url)
-    val service = EnrichService(redis)
+    val service = EnrichService(redis, meterRegistry)
 
     val server = NettyServerBuilder.forPort(config.server.port)
         .addService(service)
