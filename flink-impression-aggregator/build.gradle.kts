@@ -16,6 +16,8 @@ dependencies {
     implementation(libs.flink.connector.kafka)
     implementation(libs.flink.avro)
     implementation(libs.flink.avro.confluent.registry)
+    implementation(libs.kafka.clients)
+    implementation(libs.confluent.kafka.avro.serializer)
 
     // Redis sink uses Lettuce (already in catalog)
     implementation(libs.lettuce.core)
@@ -31,7 +33,16 @@ dependencies {
     testImplementation(libs.assertk)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.flink.test.utils)
+    testImplementation(libs.flink.connector.base)
     testImplementation(platform(libs.testcontainers.bom))
     testImplementation(libs.testcontainers.junit)
     testImplementation(libs.testcontainers.kafka)
+}
+
+tasks.withType<Test> {
+    // Flink 1.20 + Java 17: Kryo's chill package needs reflective access to java.util internals.
+    jvmArgs(
+        "--add-opens=java.base/java.util=ALL-UNNAMED",
+        "--add-opens=java.base/java.lang=ALL-UNNAMED",
+    )
 }

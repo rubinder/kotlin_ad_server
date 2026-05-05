@@ -95,6 +95,7 @@ flink-avro = { module = "org.apache.flink:flink-avro", version.ref = "flink" }
 flink-avro-confluent-registry = { module = "org.apache.flink:flink-avro-confluent-registry", version.ref = "flink" }
 flink-test-utils = { module = "org.apache.flink:flink-test-utils", version.ref = "flink" }
 flink-streaming-java-tests = { module = "org.apache.flink:flink-streaming-java", version.ref = "flink" }
+flink-connector-base = { module = "org.apache.flink:flink-connector-base", version.ref = "flink" }
 
 # Phase 3: Testcontainers — Kafka + Schema Registry
 testcontainers-kafka = { module = "org.testcontainers:kafka" }
