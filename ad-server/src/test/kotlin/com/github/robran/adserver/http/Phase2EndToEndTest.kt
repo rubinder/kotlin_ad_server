@@ -49,8 +49,9 @@ class Phase2EndToEndTest {
             .withUsername("test")
             .withPassword("test")
 
-    private val redis: GenericContainer<*> = GenericContainer(DockerImageName.parse("redis:7-alpine"))
-        .withExposedPorts(6379)
+    private val redis: GenericContainer<*> =
+        GenericContainer(DockerImageName.parse("redis:7-alpine"))
+            .withExposedPorts(6379)
 
     private lateinit var redisClient: RedisClient
     private lateinit var freqServer: Server
@@ -65,19 +66,21 @@ class Phase2EndToEndTest {
         redis.start()
 
         InventoryLoader.migrate(postgres.jdbcUrl, postgres.username, postgres.password)
-        val snapshot = InventoryLoader.pooledDataSource(postgres.jdbcUrl, postgres.username, postgres.password)
-            .use { ds ->
-                SeedLoader.seed(ds)
-                InventoryLoader(ds).load()
-            }
+        val snapshot =
+            InventoryLoader.pooledDataSource(postgres.jdbcUrl, postgres.username, postgres.password)
+                .use { ds ->
+                    SeedLoader.seed(ds)
+                    InventoryLoader(ds).load()
+                }
 
         val redisUrl = "redis://${redis.host}:${redis.getMappedPort(6379)}"
         redisClient = RedisClient.connect(redisUrl)
-        freqServer = InProcessServerBuilder.forName(serverName)
-            .directExecutor()
-            .addService(EnrichService(redisClient))
-            .build()
-            .start()
+        freqServer =
+            InProcessServerBuilder.forName(serverName)
+                .directExecutor()
+                .addService(EnrichService(redisClient))
+                .build()
+                .start()
 
         freqChannel = InProcessChannelBuilder.forName(serverName).directExecutor().build()
         val grpcClient = GrpcFrequencyClient(freqChannel, timeoutMs = 1_000L)
@@ -93,77 +96,85 @@ class Phase2EndToEndTest {
         postgres.stop()
     }
 
-    private fun banner300x250Request(userId: String) = BidRequest(
-        id = "req-${System.nanoTime()}",
-        imp = listOf(Imp(id = "1", banner = Banner(300, 250))),
-        user = User(id = userId),
-    )
-
-    @Test
-    fun `auction returns a winner when no caps are set`() = testApplication {
-        application { adServerModule(HealthState().apply { ready.set(true) }, pipeline) }
-        val client = createClient { install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) } }
-
-        val response = client.post("/openrtb/bid") {
-            contentType(ContentType.Application.Json)
-            setBody(banner300x250Request(userId = "fresh-user"))
-        }
-        assertThat(response.status).isEqualTo(HttpStatusCode.OK)
-        val body: BidResponse = response.body()
-        assertThat(body.seatbid).hasSize(1)
-        assertThat(body.seatbid[0].bid[0].cid).isNotNull()
-    }
-
-    @Test
-    fun `auction skips a campaign whose freq cap is hit`() = testApplication {
-        application { adServerModule(HealthState().apply { ready.set(true) }, pipeline) }
-        val client = createClient { install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) } }
-
-        val userId = "capped-user"
-        runBlocking {
-            for (i in 1..50) {
-                val cid = "camp-%03d".format(i)
-                redisClient.set("freq:$userId:$cid", "999")
-            }
-        }
-
-        val response = client.post("/openrtb/bid") {
-            contentType(ContentType.Application.Json)
-            setBody(banner300x250Request(userId = userId))
-        }
-        val body: BidResponse = response.body()
-        assertThat(body.seatbid).hasSize(0)
-        assertThat(body.nbr).isEqualTo(NoBidReason.NO_CANDIDATES_AFTER_FREQ_COMPSEP)
-    }
-
-    @Test
-    fun `competitive separation drops candidates whose category is in winhistory`() = testApplication {
-        application { adServerModule(HealthState().apply { ready.set(true) }, pipeline) }
-        val client = createClient { install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) } }
-
-        val userId = "saturated-user"
-        val seedCategories = listOf(
-            "IAB13", "IAB13-1", "IAB13-2", "IAB13-3", "IAB13-7", "IAB13-9",
-            "IAB19", "IAB19-6", "IAB19-15", "IAB19-30",
-            "IAB8", "IAB8-1", "IAB8-5", "IAB8-9",
-            "IAB2", "IAB2-2", "IAB2-5",
-            "IAB20", "IAB20-1", "IAB20-3", "IAB20-26",
-            "IAB5", "IAB5-1", "IAB5-3", "IAB5-13",
-            "IAB16", "IAB16-1", "IAB16-7",
+    private fun banner300x250Request(userId: String) =
+        BidRequest(
+            id = "req-${System.nanoTime()}",
+            imp = listOf(Imp(id = "1", banner = Banner(300, 250))),
+            user = User(id = userId),
         )
-        runBlocking {
-            redisClient.zadd(
-                "winhistory:$userId",
-                *seedCategories.mapIndexed { i, c -> "fake-camp-$i:$c" to i.toDouble() }.toTypedArray(),
-            )
+
+    @Test
+    fun `auction returns a winner when no caps are set`() =
+        testApplication {
+            application { adServerModule(HealthState().apply { ready.set(true) }, pipeline) }
+            val client = createClient { install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) } }
+
+            val response =
+                client.post("/openrtb/bid") {
+                    contentType(ContentType.Application.Json)
+                    setBody(banner300x250Request(userId = "fresh-user"))
+                }
+            assertThat(response.status).isEqualTo(HttpStatusCode.OK)
+            val body: BidResponse = response.body()
+            assertThat(body.seatbid).hasSize(1)
+            assertThat(body.seatbid[0].bid[0].cid).isNotNull()
         }
 
-        val response = client.post("/openrtb/bid") {
-            contentType(ContentType.Application.Json)
-            setBody(banner300x250Request(userId = userId))
+    @Test
+    fun `auction skips a campaign whose freq cap is hit`() =
+        testApplication {
+            application { adServerModule(HealthState().apply { ready.set(true) }, pipeline) }
+            val client = createClient { install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) } }
+
+            val userId = "capped-user"
+            runBlocking {
+                for (i in 1..50) {
+                    val cid = "camp-%03d".format(i)
+                    redisClient.set("freq:$userId:$cid", "999")
+                }
+            }
+
+            val response =
+                client.post("/openrtb/bid") {
+                    contentType(ContentType.Application.Json)
+                    setBody(banner300x250Request(userId = userId))
+                }
+            val body: BidResponse = response.body()
+            assertThat(body.seatbid).hasSize(0)
+            assertThat(body.nbr).isEqualTo(NoBidReason.NO_CANDIDATES_AFTER_FREQ_COMPSEP)
         }
-        val body: BidResponse = response.body()
-        assertThat(body.seatbid).hasSize(0)
-        assertThat(body.nbr).isEqualTo(NoBidReason.NO_CANDIDATES_AFTER_FREQ_COMPSEP)
-    }
+
+    @Test
+    fun `competitive separation drops candidates whose category is in winhistory`() =
+        testApplication {
+            application { adServerModule(HealthState().apply { ready.set(true) }, pipeline) }
+            val client = createClient { install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) } }
+
+            val userId = "saturated-user"
+            val seedCategories =
+                listOf(
+                    "IAB13", "IAB13-1", "IAB13-2", "IAB13-3", "IAB13-7", "IAB13-9",
+                    "IAB19", "IAB19-6", "IAB19-15", "IAB19-30",
+                    "IAB8", "IAB8-1", "IAB8-5", "IAB8-9",
+                    "IAB2", "IAB2-2", "IAB2-5",
+                    "IAB20", "IAB20-1", "IAB20-3", "IAB20-26",
+                    "IAB5", "IAB5-1", "IAB5-3", "IAB5-13",
+                    "IAB16", "IAB16-1", "IAB16-7",
+                )
+            runBlocking {
+                redisClient.zadd(
+                    "winhistory:$userId",
+                    *seedCategories.mapIndexed { i, c -> "fake-camp-$i:$c" to i.toDouble() }.toTypedArray(),
+                )
+            }
+
+            val response =
+                client.post("/openrtb/bid") {
+                    contentType(ContentType.Application.Json)
+                    setBody(banner300x250Request(userId = userId))
+                }
+            val body: BidResponse = response.body()
+            assertThat(body.seatbid).hasSize(0)
+            assertThat(body.nbr).isEqualTo(NoBidReason.NO_CANDIDATES_AFTER_FREQ_COMPSEP)
+        }
 }

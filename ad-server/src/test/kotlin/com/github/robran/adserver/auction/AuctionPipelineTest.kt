@@ -126,4 +126,67 @@ class AuctionPipelineTest {
             // Anonymous still gets to bid in this phase.
             assertThat(resp.seatbid).hasSize(1)
         }
+
+    @Test
+    fun `emits AuctionResultEvent for both filled and no-fill outcomes`() =
+        runTest {
+            val recordingEmitter =
+                object : com.github.robran.adserver.kafka.EventEmitter {
+                    val results = mutableListOf<com.github.robran.adserver.protocol.events.AuctionResultEvent>()
+                    val impressions = mutableListOf<com.github.robran.adserver.protocol.events.ImpressionEvent>()
+
+                    override fun emitAuctionResult(event: com.github.robran.adserver.protocol.events.AuctionResultEvent) {
+                        results += event
+                    }
+
+                    override fun emitImpression(event: com.github.robran.adserver.protocol.events.ImpressionEvent) {
+                        impressions += event
+                    }
+                }
+
+            val s = InventorySnapshot(listOf(campaign("c1", bid = 2.0)), Instant.now())
+            val pipe =
+                AuctionPipeline(
+                    candidateBuilder = CandidateBuilder(s),
+                    stages =
+                        listOf(
+                            BlockingPolicyStage(),
+                            FrequencyAndCompsepStage(FakeFrequencyClient()),
+                            FloorPriceStage(),
+                            SelectionStage(Random(42)),
+                        ),
+                    eventEmitter = recordingEmitter,
+                    clock = { 12345L },
+                )
+
+            pipe.runAuction(req())
+
+            assertThat(recordingEmitter.results).hasSize(1)
+            assertThat(recordingEmitter.results[0].outcome).isEqualTo(com.github.robran.adserver.protocol.events.Outcome.FILLED)
+            assertThat(recordingEmitter.results[0].tsMillis).isEqualTo(12345L)
+            assertThat(recordingEmitter.impressions).hasSize(1)
+            assertThat(recordingEmitter.impressions[0].campaignId.toString()).isEqualTo("c1")
+
+            // No-fill case (categories blocked)
+            recordingEmitter.results.clear()
+            recordingEmitter.impressions.clear()
+            val pipeBlocked =
+                AuctionPipeline(
+                    candidateBuilder = CandidateBuilder(s),
+                    stages =
+                        listOf(
+                            BlockingPolicyStage(),
+                            FrequencyAndCompsepStage(FakeFrequencyClient()),
+                            FloorPriceStage(),
+                            SelectionStage(Random(42)),
+                        ),
+                    eventEmitter = recordingEmitter,
+                    clock = { 99L },
+                )
+            pipeBlocked.runAuction(req(bcat = listOf("IAB1")))
+            assertThat(recordingEmitter.results).hasSize(1)
+            assertThat(recordingEmitter.results[0].outcome)
+                .isEqualTo(com.github.robran.adserver.protocol.events.Outcome.NO_FILL_BLOCKING)
+            assertThat(recordingEmitter.impressions).hasSize(0)
+        }
 }

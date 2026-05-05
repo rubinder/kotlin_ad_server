@@ -1,0 +1,14 @@
+{
+  "namespace": "com.github.robran.adserver.protocol.events",
+  "type": "record",
+  "name": "ImpressionEvent",
+  "doc": "Emitted by ad-server when an ad is selected. Drives Phase 3 Flink aggregator → Redis counter.",
+  "fields": [
+    { "name": "user_id",     "type": "string", "doc": "Resolved user id (or 'anonymous')" },
+    { "name": "campaign_id", "type": "string" },
+    { "name": "creative_id", "type": "string" },
+    { "name": "category",    "type": "string", "doc": "Primary IAB category of the campaign" },
+    { "name": "price",       "type": "double", "doc": "Winning bid price (CPM, USD)" },
+    { "name": "ts_millis",   "type": "long",   "doc": "Selection timestamp, unix epoch ms" }
+  ]
+}

@@ -21,6 +21,14 @@ lettuce = "6.5.1.RELEASE"
 protobuf = "4.28.3"
 protobuf-plugin = "0.9.4"
 
+# Phase 3 additions
+kafka-clients = "3.8.0"
+avro = "1.12.0"
+confluent = "7.7.0"
+flink = "1.20.0"
+flink-kafka-connector = "3.3.0-1.20"
+gradle-avro-plugin = "1.9.1"
+
 [libraries]
 # Kotlin
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
@@ -73,9 +81,29 @@ protobuf-kotlin = { module = "com.google.protobuf:protobuf-kotlin", version.ref 
 lettuce-core = { module = "io.lettuce:lettuce-core", version.ref = "lettuce" }
 kotlinx-coroutines-reactor = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-reactor", version.ref = "kotlinx-coroutines" }
 
+# Phase 3: Kafka + Avro + Schema Registry
+kafka-clients = { module = "org.apache.kafka:kafka-clients", version.ref = "kafka-clients" }
+avro = { module = "org.apache.avro:avro", version.ref = "avro" }
+confluent-kafka-avro-serializer = { module = "io.confluent:kafka-avro-serializer", version.ref = "confluent" }
+confluent-kafka-schema-registry-client = { module = "io.confluent:kafka-schema-registry-client", version.ref = "confluent" }
+
+# Phase 3: Flink
+flink-streaming-java = { module = "org.apache.flink:flink-streaming-java", version.ref = "flink" }
+flink-clients = { module = "org.apache.flink:flink-clients", version.ref = "flink" }
+flink-connector-kafka = { module = "org.apache.flink:flink-connector-kafka", version.ref = "flink-kafka-connector" }
+flink-avro = { module = "org.apache.flink:flink-avro", version.ref = "flink" }
+flink-avro-confluent-registry = { module = "org.apache.flink:flink-avro-confluent-registry", version.ref = "flink" }
+flink-test-utils = { module = "org.apache.flink:flink-test-utils", version.ref = "flink" }
+flink-streaming-java-tests = { module = "org.apache.flink:flink-streaming-java", version.ref = "flink" }
+flink-connector-base = { module = "org.apache.flink:flink-connector-base", version.ref = "flink" }
+
+# Phase 3: Testcontainers — Kafka + Schema Registry
+testcontainers-kafka = { module = "org.testcontainers:kafka" }
+
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 ktor = { id = "io.ktor.plugin", version.ref = "ktor" }
 ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint-plugin" }
 protobuf = { id = "com.google.protobuf", version.ref = "protobuf-plugin" }
+avro = { id = "com.github.davidmc24.gradle.plugin.avro", version.ref = "gradle-avro-plugin" }

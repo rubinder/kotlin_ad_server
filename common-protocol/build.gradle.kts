@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.protobuf)
+    alias(libs.plugins.avro)
     `java-library`
 }
 
@@ -14,6 +15,7 @@ dependencies {
     // can use the message types and stub classes directly.
     api(libs.protobuf.java)
     api(libs.protobuf.kotlin)
+    api(libs.avro)
     api(libs.grpc.protobuf)
     api(libs.grpc.stub)
     api(libs.grpc.kotlin.stub)
@@ -57,8 +59,15 @@ protobuf {
     }
 }
 
+avro {
+    fieldVisibility.set("PRIVATE")
+    isCreateSetters.set(false)
+    stringType.set("String")
+}
+
 // Tell Kotlin compile to depend on generated sources (the protobuf plugin sets up the source dirs,
 // but Kotlin compilation needs an explicit dependency to wait for codegen).
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
     dependsOn(tasks.named("generateProto"))
+    dependsOn(tasks.named("generateAvroJava"))
 }
