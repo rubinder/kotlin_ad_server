@@ -18,33 +18,41 @@ class RedisClient(
     private val lettuce: LettuceClient,
     private val connection: StatefulRedisConnection<String, String>,
 ) : AutoCloseable {
-
     private val log = LoggerFactory.getLogger(javaClass)
     private val cmd: RedisReactiveCommands<String, String> = connection.reactive()
 
-    suspend fun get(key: String): String? =
-        cmd.get(key).awaitSingleOrNull()
+    suspend fun get(key: String): String? = cmd.get(key).awaitSingleOrNull()
 
-    suspend fun set(key: String, value: String): String =
-        cmd.set(key, value).awaitSingle()
+    suspend fun set(
+        key: String,
+        value: String,
+    ): String = cmd.set(key, value).awaitSingle()
 
     suspend fun mget(keys: List<String>): List<String?> {
         if (keys.isEmpty()) return emptyList()
         // Lettuce returns KeyValue<K,V>; map to V or null in the input order.
-        val results = cmd.mget(*keys.toTypedArray())
-            .collectList()
-            .awaitSingle()
+        val results =
+            cmd.mget(*keys.toTypedArray())
+                .collectList()
+                .awaitSingle()
         // The reactive mget preserves input order. Each result is a KeyValue with hasValue() flag.
         val byKey = results.associateBy { it.key }
         return keys.map { k -> byKey[k]?.let { kv -> if (kv.hasValue()) kv.value else null } }
     }
 
-    suspend fun zadd(key: String, vararg members: Pair<String, Double>): Long {
+    suspend fun zadd(
+        key: String,
+        vararg members: Pair<String, Double>,
+    ): Long {
         val scoredValues = members.map { (m, s) -> io.lettuce.core.ScoredValue.just(s, m) }.toTypedArray()
         return cmd.zadd(key, *scoredValues).awaitSingle()
     }
 
-    suspend fun zrangeByScore(key: String, min: Double, max: Double): List<String> {
+    suspend fun zrangeByScore(
+        key: String,
+        min: Double,
+        max: Double,
+    ): List<String> {
         val range = Range.create(min, max)
         return cmd.zrangebyscore(key, range)
             .collectList()

@@ -14,7 +14,6 @@ class MetricsHttpServer(
     private val registry: PrometheusMeterRegistry,
     private val port: Int,
 ) : AutoCloseable {
-
     private val log = LoggerFactory.getLogger(javaClass)
     private var server: HttpServer? = null
 
