@@ -15,6 +15,7 @@ import com.github.robran.adserver.http.metricsRoutes
 import com.github.robran.adserver.inventory.InventoryLoader
 import com.github.robran.adserver.inventory.InventorySnapshot
 import com.github.robran.adserver.metrics.MeterRegistryFactory
+import com.github.robran.adserver.tracing.OtelInitializer
 import io.grpc.netty.shaded.io.grpc.netty.NettyChannelBuilder
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
@@ -28,6 +29,7 @@ import io.ktor.server.plugins.statuspages.StatusPages
 import io.ktor.server.response.respond
 import io.ktor.server.routing.routing
 import io.micrometer.prometheusmetrics.PrometheusMeterRegistry
+import io.opentelemetry.api.OpenTelemetry
 import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
 import kotlin.random.Random
@@ -54,6 +56,7 @@ fun main() {
         }
 
     val meterRegistry = MeterRegistryFactory.build(config.metrics)
+    val openTelemetry: OpenTelemetry = OtelInitializer.init(config.tracing)
 
     @Suppress("UNUSED_VARIABLE")
     val inventoryGauges = com.github.robran.adserver.metrics.InventoryGauges(snapshot, meterRegistry)

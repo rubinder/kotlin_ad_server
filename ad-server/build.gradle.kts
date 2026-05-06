@@ -43,6 +43,14 @@ dependencies {
     implementation(libs.micrometer.registry.prometheus)
     implementation(libs.ktor.server.metrics.micrometer)
 
+    // Phase 4b: OpenTelemetry tracing
+    implementation(platform(libs.opentelemetry.bom))
+    implementation(platform(libs.opentelemetry.instrumentation.bom.alpha))
+    implementation(libs.opentelemetry.api)
+    implementation(libs.opentelemetry.sdk)
+    implementation(libs.opentelemetry.exporter.otlp)
+    implementation(libs.opentelemetry.context)
+
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)
     testRuntimeOnly(libs.junit.jupiter.engine)
@@ -65,6 +73,7 @@ dependencies {
     testImplementation(libs.flink.test.utils)
     testImplementation(libs.flink.connector.base)
     testImplementation(libs.lettuce.core)
+    testImplementation("io.opentelemetry:opentelemetry-sdk-testing")
 }
 
 tasks.withType<Test> {
