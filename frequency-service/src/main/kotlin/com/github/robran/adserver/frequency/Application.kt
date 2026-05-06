@@ -16,7 +16,7 @@ fun main() {
     val grpcTelemetry = GrpcTelemetry.create(openTelemetry)
 
     val redis = RedisClient.connect(config.redis.url)
-    val service = EnrichService(redis, meterRegistry)
+    val service = EnrichService(redis, meterRegistry, openTelemetry)
 
     val server =
         NettyServerBuilder.forPort(config.server.port)
