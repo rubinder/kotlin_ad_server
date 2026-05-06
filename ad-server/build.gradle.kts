@@ -51,6 +51,7 @@ dependencies {
     implementation(libs.opentelemetry.exporter.otlp)
     implementation(libs.opentelemetry.context)
     implementation(libs.opentelemetry.grpc.instrumentation)
+    implementation(libs.opentelemetry.logback.mdc.instrumentation)
 
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)
