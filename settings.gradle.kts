@@ -33,4 +33,5 @@ include(
     "ad-server",
     "frequency-service",
     "flink-impression-aggregator",
+    "load-test",
 )

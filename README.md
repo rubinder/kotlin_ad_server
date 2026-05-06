@@ -9,8 +9,8 @@ boot, with the request hot path serving from memory only. Full design: `docs/sup
 - ✅ **Phase 1 — Skeleton + hot path**
 - ✅ **Phase 2 — Frequency service + Redis**
 - ✅ **Phase 3 — Kafka + Flink aggregator**
-- ✅ **Phase 4 — Observability** (this commit)
-- ⏳ Phase 5 — Gatling load testing + profiling
+- ✅ **Phase 4 — Observability**
+- ✅ **Phase 5 — Gatling load testing + profiling** (this commit)
 - ⏳ Phase 6 — Polish + final README
 
 ## Modules
@@ -104,6 +104,32 @@ Trace context propagates via W3C `traceparent` headers on the gRPC call, injecte
 Both services emit JSON logs via `logstash-logback-encoder`, with `trace_id` / `span_id`
 auto-injected into MDC by `opentelemetry-logback-mdc-1.0`. Every log line correlates to its
 trace.
+
+## Load testing
+
+Four Gatling Kotlin DSL scenarios in the `:load-test` module:
+
+| Scenario | Profile | Goal |
+|---|---|---|
+| `RampUp` | 0 → 5K QPS over 5 min, then 5 min steady | sustained-load latency baseline |
+| `Burst` | 1K baseline / 5K spike, 3 cycles | tail latency under load transitions |
+| `Soak` | 3K QPS for 30 min | memory leaks, pool exhaustion |
+| `FailFreq` | 5K QPS while frequency-service is killed | fail-open behavior under load |
+
+Run: `./scripts/load-test.sh RampUp docs/load-test/baseline-run` (after `docker compose up -d`
+and the three service `./gradlew :*:run`).
+
+### Profiling: before / after
+
+We profiled the baseline RampUp at 5K QPS with [async-profiler](https://github.com/async-profiler/async-profiler).
+The flame graph showed `Dispatchers.IO` frames dominating the freq-RPC path — a leftover from
+Phase 2 Task 9 where `withContext(Dispatchers.IO)` was added around `withTimeout` to dodge
+`kotlinx.coroutines.test`'s virtual-time scheduler. In production this forced a context switch
+per RPC.
+
+The fix (Phase 5 Task 10): removed the wrap, switched the affected tests to `runBlocking`.
+Detailed results in [docs/load-test/baseline.md](docs/load-test/baseline.md) and
+[docs/load-test/after.md](docs/load-test/after.md), including flame graphs.
 
 ## Smoke test
 
