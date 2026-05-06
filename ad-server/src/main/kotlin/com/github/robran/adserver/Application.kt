@@ -79,7 +79,7 @@ fun main() {
             config.kafka,
             meterRegistry = meterRegistry,
         )
-    val pipeline = buildPipeline(snapshot, frequencyClient, eventEmitter, meterRegistry)
+    val pipeline = buildPipeline(snapshot, frequencyClient, eventEmitter, meterRegistry, openTelemetry)
 
     log.info(
         "ad-server starting: {} campaigns loaded, frequency-service @ {}:{}",
@@ -114,6 +114,7 @@ fun buildPipeline(
     eventEmitter: com.github.robran.adserver.kafka.EventEmitter = com.github.robran.adserver.kafka.NoOpEventEmitter,
     meterRegistry: io.micrometer.core.instrument.MeterRegistry =
         com.github.robran.adserver.metrics.PipelineMetrics.defaultRegistry(),
+    openTelemetry: io.opentelemetry.api.OpenTelemetry = io.opentelemetry.api.OpenTelemetry.noop(),
 ): AuctionPipeline =
     AuctionPipeline(
         candidateBuilder = CandidateBuilder(snapshot),
@@ -126,6 +127,7 @@ fun buildPipeline(
             ),
         eventEmitter = eventEmitter,
         meterRegistry = meterRegistry,
+        openTelemetry = openTelemetry,
     )
 
 fun Application.adServerModule(
