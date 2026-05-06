@@ -7,11 +7,12 @@ import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Test
 
 class OpenRtbSerializationTest {
-    private val json = Json {
-        ignoreUnknownKeys = true
-        encodeDefaults = false
-        explicitNulls = false
-    }
+    private val json =
+        Json {
+            ignoreUnknownKeys = true
+            encodeDefaults = false
+            explicitNulls = false
+        }
 
     @Test
     fun `parses golden BidRequest banner fixture`() {
@@ -29,27 +30,30 @@ class OpenRtbSerializationTest {
 
     @Test
     fun `BidResponse round-trips through JSON`() {
-        val resp = BidResponse(
-            id = "req-001",
-            seatbid = listOf(
-                SeatBid(
-                    seat = "advertiser-7",
-                    bid = listOf(
-                        Bid(
-                            id = "bid-1",
-                            impid = "1",
-                            price = 2.50,
-                            cid = "campaign-9",
-                            crid = "creative-3",
-                            cat = listOf("IAB3"),
-                            w = 300,
-                            h = 250,
+        val resp =
+            BidResponse(
+                id = "req-001",
+                seatbid =
+                    listOf(
+                        SeatBid(
+                            seat = "advertiser-7",
+                            bid =
+                                listOf(
+                                    Bid(
+                                        id = "bid-1",
+                                        impid = "1",
+                                        price = 2.50,
+                                        cid = "campaign-9",
+                                        crid = "creative-3",
+                                        cat = listOf("IAB3"),
+                                        w = 300,
+                                        h = 250,
+                                    ),
+                                ),
                         ),
                     ),
-                ),
-            ),
-            cur = "USD",
-        )
+                cur = "USD",
+            )
 
         val encoded = json.encodeToString(BidResponse.serializer(), resp)
         val decoded = json.decodeFromString<BidResponse>(encoded)

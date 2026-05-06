@@ -32,7 +32,6 @@ class GrpcFrequencyClient(
     private val timeoutMs: Long = 8L,
     meterRegistry: MeterRegistry = SimpleMeterRegistry(),
 ) : FrequencyClient {
-
     private val log = LoggerFactory.getLogger(javaClass)
     private val stub = FrequencyGrpcKt.FrequencyCoroutineStub(channel)
 
@@ -40,7 +39,10 @@ class GrpcFrequencyClient(
     private val timeoutTimer: Timer = newTimer(meterRegistry, "timeout")
     private val errorTimer: Timer = newTimer(meterRegistry, "error")
 
-    override suspend fun enrich(userId: String, campaignIds: List<String>): EnrichResult {
+    override suspend fun enrich(
+        userId: String,
+        campaignIds: List<String>,
+    ): EnrichResult {
         val request =
             EnrichRequest.newBuilder()
                 .setUserId(userId)
@@ -49,9 +51,10 @@ class GrpcFrequencyClient(
         var nanos = 0L
         return try {
             var resp: com.github.robran.adserver.protocol.frequency.EnrichResponse
-            nanos = measureNanoTime {
-                resp = withTimeout(timeoutMs) { stub.enrichForAuction(request) }
-            }
+            nanos =
+                measureNanoTime {
+                    resp = withTimeout(timeoutMs) { stub.enrichForAuction(request) }
+                }
             okTimer.record(nanos, TimeUnit.NANOSECONDS)
             EnrichResult(
                 freqCounts = resp.freqCountsMap.toMap(),
@@ -68,7 +71,10 @@ class GrpcFrequencyClient(
         }
     }
 
-    private fun newTimer(registry: MeterRegistry, outcome: String): Timer =
+    private fun newTimer(
+        registry: MeterRegistry,
+        outcome: String,
+    ): Timer =
         Timer.builder(METRIC_NAME)
             .tag("outcome", outcome)
             .publishPercentileHistogram()

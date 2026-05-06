@@ -26,7 +26,12 @@ object SeedLoader {
         )
     }
 
-    private fun seedTable(dataSource: DataSource, table: String, resource: String, cols: List<String>) {
+    private fun seedTable(
+        dataSource: DataSource,
+        table: String,
+        resource: String,
+        cols: List<String>,
+    ) {
         val rows = parseCsv(resource)
         val placeholders = cols.joinToString(",") { "?" }
         val sql = "INSERT INTO $table (${cols.joinToString(",")}) VALUES ($placeholders) ON CONFLICT (id) DO NOTHING"
@@ -53,10 +58,11 @@ object SeedLoader {
     }
 
     private fun parseCsv(resource: String): List<Map<String, String>> {
-        val text = SeedLoader::class.java.getResourceAsStream(resource)
-            ?.bufferedReader()
-            ?.readText()
-            ?: error("resource not found: $resource")
+        val text =
+            SeedLoader::class.java.getResourceAsStream(resource)
+                ?.bufferedReader()
+                ?.readText()
+                ?: error("resource not found: $resource")
         val lines = text.lines().filter { it.isNotBlank() }
         if (lines.size < 2) return emptyList()
         val header = lines.first().split(",")

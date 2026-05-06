@@ -30,14 +30,15 @@ import io.lettuce.core.RedisClient as LettuceClient
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class ImpressionAggregatorJobTest {
+    private val kafka: ConfluentKafkaContainer =
+        ConfluentKafkaContainer(
+            DockerImageName.parse("confluentinc/cp-kafka:7.7.0"),
+        )
 
-    private val kafka: ConfluentKafkaContainer = ConfluentKafkaContainer(
-        DockerImageName.parse("confluentinc/cp-kafka:7.7.0"),
-    )
-
-    private val redis: GenericContainer<*> = GenericContainer(
-        DockerImageName.parse("redis:7-alpine"),
-    ).withExposedPorts(6379)
+    private val redis: GenericContainer<*> =
+        GenericContainer(
+            DockerImageName.parse("redis:7-alpine"),
+        ).withExposedPorts(6379)
 
     private val mockScope = "phase3-flink-${UUID.randomUUID()}"
     private val mockUrl = "mock://$mockScope"
@@ -47,12 +48,13 @@ class ImpressionAggregatorJobTest {
     private lateinit var redisLettuce: LettuceClient
     private lateinit var redisConn: StatefulRedisConnection<String, String>
 
-    private val miniCluster = MiniClusterWithClientResource(
-        MiniClusterResourceConfiguration.Builder()
-            .setNumberSlotsPerTaskManager(2)
-            .setNumberTaskManagers(1)
-            .build(),
-    )
+    private val miniCluster =
+        MiniClusterWithClientResource(
+            MiniClusterResourceConfiguration.Builder()
+                .setNumberSlotsPerTaskManager(2)
+                .setNumberTaskManagers(1)
+                .build(),
+        )
 
     @BeforeAll
     fun setup() {
@@ -60,13 +62,14 @@ class ImpressionAggregatorJobTest {
         redis.start()
         miniCluster.before()
 
-        val producerProps = Properties().apply {
-            put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.bootstrapServers)
-            put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer::class.java.name)
-            put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, KafkaAvroSerializer::class.java.name)
-            put(KafkaAvroSerializerConfig.SCHEMA_REGISTRY_URL_CONFIG, mockUrl)
-            put(ProducerConfig.ACKS_CONFIG, "1")
-        }
+        val producerProps =
+            Properties().apply {
+                put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.bootstrapServers)
+                put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer::class.java.name)
+                put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, KafkaAvroSerializer::class.java.name)
+                put(KafkaAvroSerializerConfig.SCHEMA_REGISTRY_URL_CONFIG, mockUrl)
+                put(ProducerConfig.ACKS_CONFIG, "1")
+            }
         producer = KafkaProducer(producerProps)
 
         redisLettuce = LettuceClient.create(RedisURI.create("redis://${redis.host}:${redis.getMappedPort(6379)}"))
@@ -88,25 +91,27 @@ class ImpressionAggregatorJobTest {
     @Test
     fun `aggregates impressions and writes counts back to Redis`() {
         val baseTs = 0L
-        val events = (1..5).map { i ->
-            ImpressionEvent.newBuilder()
-                .setUserId("user-A")
-                .setCampaignId("camp-001")
-                .setCreativeId("cre-001a")
-                .setCategory("IAB13")
-                .setPrice(2.0)
-                .setTsMillis(baseTs + i * 1000L)
-                .build()
-        }
+        val events =
+            (1..5).map { i ->
+                ImpressionEvent.newBuilder()
+                    .setUserId("user-A")
+                    .setCampaignId("camp-001")
+                    .setCreativeId("cre-001a")
+                    .setCategory("IAB13")
+                    .setPrice(2.0)
+                    .setTsMillis(baseTs + i * 1000L)
+                    .build()
+            }
         // One impression in the next window, used to drive the watermark past the first window's end.
-        val watermarkDriver = ImpressionEvent.newBuilder()
-            .setUserId("other")
-            .setCampaignId("camp-099")
-            .setCreativeId("cre-x")
-            .setCategory("IAB1")
-            .setPrice(1.0)
-            .setTsMillis(15_000L)
-            .build()
+        val watermarkDriver =
+            ImpressionEvent.newBuilder()
+                .setUserId("other")
+                .setCampaignId("camp-099")
+                .setCreativeId("cre-x")
+                .setCategory("IAB1")
+                .setPrice(1.0)
+                .setTsMillis(15_000L)
+                .build()
 
         for (e in events + watermarkDriver) {
             producer.send(ProducerRecord(topic, e.userId.toString(), e)).get()
@@ -114,35 +119,42 @@ class ImpressionAggregatorJobTest {
         producer.flush()
 
         // Build the job using a config pointed at the test infra.
-        val config = FlinkAppConfig(
-            source = FlinkSourceConfig(
-                bootstrapServers = kafka.bootstrapServers,
-                schemaRegistryUrl = mockUrl,
-                topicImpressionEvents = topic,
-                groupId = "test-${UUID.randomUUID()}",
-            ),
-            sink = RedisSinkConfig(
-                url = "redis://${redis.host}:${redis.getMappedPort(6379)}",
-                capWindowSeconds = 86400,
-                winhistoryWindowSeconds = 3600,
-            ),
-            checkpointIntervalMs = 5_000,
-            windowSeconds = 10,
-            allowedLatenessSeconds = 2,
-        )
+        val config =
+            FlinkAppConfig(
+                source =
+                    FlinkSourceConfig(
+                        bootstrapServers = kafka.bootstrapServers,
+                        schemaRegistryUrl = mockUrl,
+                        topicImpressionEvents = topic,
+                        groupId = "test-${UUID.randomUUID()}",
+                    ),
+                sink =
+                    RedisSinkConfig(
+                        url = "redis://${redis.host}:${redis.getMappedPort(6379)}",
+                        capWindowSeconds = 86400,
+                        winhistoryWindowSeconds = 3600,
+                    ),
+                checkpointIntervalMs = 5_000,
+                windowSeconds = 10,
+                allowedLatenessSeconds = 2,
+            )
         val env = StreamExecutionEnvironment.getExecutionEnvironment()
         env.enableCheckpointing(config.checkpointIntervalMs, CheckpointingMode.EXACTLY_ONCE)
         env.parallelism = 1
 
         ImpressionAggregatorJob.build(env, config)
 
-        val jobThread = Thread {
-            try {
-                env.execute("test-job")
-            } catch (_: InterruptedException) {
-                // shutdown signal
+        val jobThread =
+            Thread {
+                try {
+                    env.execute("test-job")
+                } catch (_: InterruptedException) {
+                    // shutdown signal
+                }
+            }.also {
+                it.isDaemon = true
+                it.start()
             }
-        }.also { it.isDaemon = true; it.start() }
 
         // Poll Redis for the expected counter; allow up to 90s for the job + Kafka catch-up.
         val sync = redisConn.sync()

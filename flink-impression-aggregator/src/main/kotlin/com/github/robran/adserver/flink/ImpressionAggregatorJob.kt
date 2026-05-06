@@ -23,21 +23,26 @@ import org.apache.kafka.clients.consumer.ConsumerRecord
 import java.time.Duration
 
 object ImpressionAggregatorJob {
-
-    fun build(env: StreamExecutionEnvironment, config: FlinkAppConfig): DataStream<WindowedCount> {
-        val watermarks = WatermarkStrategy
-            .forBoundedOutOfOrderness<ImpressionEvent>(Duration.ofSeconds(config.allowedLatenessSeconds))
-            .withTimestampAssigner { event, _ -> event.tsMillis }
+    fun build(
+        env: StreamExecutionEnvironment,
+        config: FlinkAppConfig,
+    ): DataStream<WindowedCount> {
+        val watermarks =
+            WatermarkStrategy
+                .forBoundedOutOfOrderness<ImpressionEvent>(Duration.ofSeconds(config.allowedLatenessSeconds))
+                .withTimestampAssigner { event, _ -> event.tsMillis }
 
         val source = kafkaSource(config)
-        val stream: DataStream<ImpressionEvent> = env
-            .fromSource(source, watermarks, "kafka-impression-events", ImpressionEventTypeInfo)
+        val stream: DataStream<ImpressionEvent> =
+            env
+                .fromSource(source, watermarks, "kafka-impression-events", ImpressionEventTypeInfo)
 
-        val aggregated: DataStream<WindowedCount> = stream
-            .keyBy { event -> "${event.userId}|${event.campaignId}" }
-            .window(TumblingEventTimeWindows.of(Time.seconds(config.windowSeconds)))
-            .allowedLateness(Time.seconds(config.allowedLatenessSeconds))
-            .process(CountAndEmit())
+        val aggregated: DataStream<WindowedCount> =
+            stream
+                .keyBy { event -> "${event.userId}|${event.campaignId}" }
+                .window(TumblingEventTimeWindows.of(Time.seconds(config.windowSeconds)))
+                .allowedLateness(Time.seconds(config.allowedLatenessSeconds))
+                .process(CountAndEmit())
 
         aggregated.addSink(
             RedisCounterSink(
@@ -70,7 +75,6 @@ object ImpressionAggregatorJob {
     private class KafkaAvroImpressionDeserializer(
         private val schemaRegistryUrl: String,
     ) : KafkaRecordDeserializationSchema<ImpressionEvent> {
-
         @Transient
         private var inner: KafkaAvroDeserializer? = null
 
@@ -106,10 +110,15 @@ object ImpressionAggregatorJob {
      */
     private object ImpressionEventTypeInfo : TypeInformation<ImpressionEvent>() {
         override fun isBasicType(): Boolean = false
+
         override fun isTupleType(): Boolean = false
+
         override fun getArity(): Int = 1
+
         override fun getTotalFields(): Int = 1
+
         override fun getTypeClass(): Class<ImpressionEvent> = ImpressionEvent::class.java
+
         override fun isKeyType(): Boolean = false
 
         override fun createSerializer(config: SerializerConfig): TypeSerializer<ImpressionEvent> =
@@ -120,8 +129,11 @@ object ImpressionAggregatorJob {
             AvroSerializer(ImpressionEvent::class.java)
 
         override fun toString(): String = "ImpressionEventTypeInfo"
+
         override fun equals(other: Any?): Boolean = other is ImpressionEventTypeInfo
+
         override fun hashCode(): Int = ImpressionEvent::class.java.hashCode()
+
         override fun canEqual(obj: Any?): Boolean = obj is ImpressionEventTypeInfo
     }
 

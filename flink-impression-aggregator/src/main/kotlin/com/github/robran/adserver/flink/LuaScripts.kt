@@ -20,7 +20,11 @@ class LuaScripts(private val sync: RedisCommands<String, String>) {
     private var incrFreqSha: String? = null
     private var addWinHistorySha: String? = null
 
-    fun incrFreqWithExpiry(key: String, increment: Long, ttlSeconds: Long): Long {
+    fun incrFreqWithExpiry(
+        key: String,
+        increment: Long,
+        ttlSeconds: Long,
+    ): Long {
         val sha = ensureLoaded(incrFreqSrc, ::incrFreqShaHolder)
         return sync.evalsha<Long>(
             sha,
@@ -31,7 +35,12 @@ class LuaScripts(private val sync: RedisCommands<String, String>) {
         )
     }
 
-    fun addWinHistory(key: String, scoreMs: Long, member: String, trimBeforeMs: Long): Long {
+    fun addWinHistory(
+        key: String,
+        scoreMs: Long,
+        member: String,
+        trimBeforeMs: Long,
+    ): Long {
         val sha = ensureLoaded(addWinHistorySrc, ::addWinHistoryShaHolder)
         return sync.evalsha<Long>(
             sha,
@@ -53,7 +62,10 @@ class LuaScripts(private val sync: RedisCommands<String, String>) {
         return addWinHistorySha
     }
 
-    private fun ensureLoaded(source: String, holder: (String?) -> String?): String {
+    private fun ensureLoaded(
+        source: String,
+        holder: (String?) -> String?,
+    ): String {
         val current = holder(null) // read
         if (current != null) return current
         val sha = sync.scriptLoad(source)

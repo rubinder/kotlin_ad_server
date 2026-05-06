@@ -13,9 +13,13 @@ data class BidRequest(
     val site: Site? = null,
     val device: Device? = null,
     val user: User? = null,
-    val tmax: Int? = null,            // max auction time in ms
+    // max auction time in ms
+    val tmax: Int? = null,
     val cur: List<String> = listOf("USD"),
-    val bcat: List<String> = emptyList(),  // blocked IAB categories
-    val badv: List<String> = emptyList(),  // blocked advertiser domains
-    val bapp: List<String> = emptyList(),  // blocked app bundle IDs
+    // blocked IAB categories
+    val bcat: List<String> = emptyList(),
+    // blocked advertiser domains
+    val badv: List<String> = emptyList(),
+    // blocked app bundle IDs
+    val bapp: List<String> = emptyList(),
 )

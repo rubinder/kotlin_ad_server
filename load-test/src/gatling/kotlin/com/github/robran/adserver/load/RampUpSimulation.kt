@@ -11,13 +11,13 @@ import java.time.Duration
  * Defaults: 5,000 QPS, 5 min ramp, 5 min steady.
  */
 class RampUpSimulation : Simulation() {
-
     private val targetRps: Int = System.getenv("RAMP_TARGET_RPS")?.toInt() ?: 5_000
     private val rampSec: Long = System.getenv("RAMP_DURATION_SECONDS")?.toLong() ?: 300L
     private val steadySec: Long = System.getenv("RAMP_STEADY_SECONDS")?.toLong() ?: 300L
 
-    private val scn = scenario("RampUp")
-        .exec(BidProtocol.bidRequest)
+    private val scn =
+        scenario("RampUp")
+            .exec(BidProtocol.bidRequest)
 
     init {
         setUp(

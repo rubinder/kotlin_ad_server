@@ -8,8 +8,10 @@ data class Imp(
     val banner: Banner,
     val bidfloor: Double = 0.0,
     val bidfloorcur: String = "USD",
-    val tagid: String? = null,        // ad slot identifier on the publisher side
-    val secure: Int = 0,              // 1 if HTTPS required
+    // ad slot identifier on the publisher side
+    val tagid: String? = null,
+    // 1 if HTTPS required
+    val secure: Int = 0,
 )
 
 @Serializable
