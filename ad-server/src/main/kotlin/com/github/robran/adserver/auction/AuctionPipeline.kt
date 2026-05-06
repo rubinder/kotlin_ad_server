@@ -12,6 +12,11 @@ import com.github.robran.adserver.protocol.openrtb.BidResponse
 import com.github.robran.adserver.protocol.openrtb.NoBidReason
 import com.github.robran.adserver.protocol.openrtb.SeatBid
 import io.micrometer.core.instrument.MeterRegistry
+import io.opentelemetry.api.OpenTelemetry
+import io.opentelemetry.api.trace.Span
+import io.opentelemetry.api.trace.StatusCode
+import io.opentelemetry.api.trace.Tracer
+import io.opentelemetry.context.Context
 import java.util.UUID
 import kotlin.system.measureNanoTime
 
@@ -21,36 +26,60 @@ class AuctionPipeline(
     private val eventEmitter: EventEmitter = NoOpEventEmitter,
     private val clock: () -> Long = { System.currentTimeMillis() },
     meterRegistry: MeterRegistry = PipelineMetrics.defaultRegistry(),
+    openTelemetry: OpenTelemetry = OpenTelemetry.noop(),
 ) {
     private val metrics = PipelineMetrics(meterRegistry)
+    private val tracer: Tracer = openTelemetry.getTracer("com.github.robran.adserver")
 
     private val stageNames = listOf("blocking", "freq+compsep", "floor", "selection")
 
     suspend fun runAuction(request: BidRequest): BidResponse {
         require(request.imp.isNotEmpty()) { "BidRequest.imp must contain at least one impression" }
+        val imp = request.imp[0]
+        val rootSpan =
+            tracer.spanBuilder("adserver.request")
+                .setAttribute("user.id", resolveUserId(request))
+                .setAttribute("imp.id", imp.id)
+                .setAttribute("slot.size", "${imp.banner.w}x${imp.banner.h}")
+                .setAttribute("request.id", request.id)
+                .startSpan()
+        val rootScope = rootSpan.makeCurrent()
         var outcomeTag = "no-fill"
-        val response: BidResponse
-        val totalNanos: Long
-        try {
-            var inner: BidResponse
-            totalNanos =
-                measureNanoTime {
-                    inner = runAuctionInner(request)
-                    outcomeTag = if (inner.seatbid.isNotEmpty()) "filled" else "no-fill"
+        return try {
+            val response: BidResponse
+            val totalNanos: Long =
+                run {
+                    var inner: BidResponse
+                    val nanos =
+                        measureNanoTime {
+                            inner = runAuctionInner(request, rootSpan)
+                            outcomeTag = if (inner.seatbid.isNotEmpty()) "filled" else "no-fill"
+                        }
+                    response = inner
+                    nanos
                 }
-            response = inner
+            metrics.requestTimer(outcomeTag).record(totalNanos, java.util.concurrent.TimeUnit.NANOSECONDS)
+            rootSpan.setAttribute("outcome", outcomeTag)
+            response
         } catch (t: Throwable) {
             metrics.requestTimer("error").record(0, java.util.concurrent.TimeUnit.NANOSECONDS)
+            rootSpan.setStatus(StatusCode.ERROR, t.message ?: t.javaClass.simpleName)
+            rootSpan.recordException(t)
             throw t
+        } finally {
+            rootScope.close()
+            rootSpan.end()
         }
-        metrics.requestTimer(outcomeTag).record(totalNanos, java.util.concurrent.TimeUnit.NANOSECONDS)
-        return response
     }
 
-    private suspend fun runAuctionInner(request: BidRequest): BidResponse {
+    private suspend fun runAuctionInner(
+        request: BidRequest,
+        rootSpan: Span,
+    ): BidResponse {
         val ctx = AuctionContext(request = request, userId = resolveUserId(request))
         val initial = candidateBuilder.build(ctx)
         metrics.candidatesSurvivingSummary("initial").record(initial.size.toDouble())
+        rootSpan.setAttribute("candidates.initial", initial.size.toLong())
 
         val sizes = IntArray(4)
         sizes[0] = initial.size
@@ -63,12 +92,27 @@ class AuctionPipeline(
         var current = initial
         for ((idx, stage) in stages.withIndex()) {
             val stageName = stageNames.getOrElse(idx) { "stage-$idx" }
+            val stageSpan =
+                tracer.spanBuilder("rule.$stageName")
+                    .setParent(Context.current())
+                    .setAttribute("candidates.in", current.size.toLong())
+                    .startSpan()
+            val stageScope = stageSpan.makeCurrent()
             val newCurrent: List<Candidate>
             val stageNanos: Long =
-                measureNanoTime {
-                    newCurrent = stage.evaluate(ctx, current)
+                try {
+                    measureNanoTime { newCurrent = stage.evaluate(ctx, current) }
+                } catch (t: Throwable) {
+                    stageSpan.setStatus(StatusCode.ERROR, t.message ?: t.javaClass.simpleName)
+                    stageSpan.recordException(t)
+                    stageScope.close()
+                    stageSpan.end()
+                    throw t
                 }
             current = newCurrent
+            stageSpan.setAttribute("candidates.out", current.size.toLong())
+            stageScope.close()
+            stageSpan.end()
             metrics.stageTimer(stageName).record(stageNanos, java.util.concurrent.TimeUnit.NANOSECONDS)
             metrics.candidatesSurvivingSummary(stageName).record(current.size.toDouble())
             if (idx + 1 < sizes.size) sizes[idx + 1] = current.size
@@ -86,6 +130,8 @@ class AuctionPipeline(
         }
 
         val winner = current.single()
+        rootSpan.setAttribute("winner.campaign_id", winner.campaign.id)
+        rootSpan.setAttribute("winner.bid", winner.bidPrice)
         emitOutcome(request, ctx, sizes, Outcome.FILLED, winner = winner)
         emitImpression(ctx, winner)
 

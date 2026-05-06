@@ -32,6 +32,10 @@ gradle-avro-plugin = "1.9.1"
 # Phase 4a additions
 micrometer = "1.13.6"
 
+# Phase 4b additions
+opentelemetry = "1.46.0"
+opentelemetry-instrumentation = "2.11.0-alpha"
+
 [libraries]
 # Kotlin
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
@@ -107,6 +111,16 @@ testcontainers-kafka = { module = "org.testcontainers:kafka" }
 micrometer-core = { module = "io.micrometer:micrometer-core", version.ref = "micrometer" }
 micrometer-registry-prometheus = { module = "io.micrometer:micrometer-registry-prometheus", version.ref = "micrometer" }
 ktor-server-metrics-micrometer = { module = "io.ktor:ktor-server-metrics-micrometer", version.ref = "ktor" }
+
+# Phase 4b: OpenTelemetry tracing
+opentelemetry-bom = { module = "io.opentelemetry:opentelemetry-bom", version.ref = "opentelemetry" }
+opentelemetry-api = { module = "io.opentelemetry:opentelemetry-api" }
+opentelemetry-sdk = { module = "io.opentelemetry:opentelemetry-sdk" }
+opentelemetry-exporter-otlp = { module = "io.opentelemetry:opentelemetry-exporter-otlp" }
+opentelemetry-context = { module = "io.opentelemetry:opentelemetry-context" }
+opentelemetry-instrumentation-bom-alpha = { module = "io.opentelemetry.instrumentation:opentelemetry-instrumentation-bom-alpha", version.ref = "opentelemetry-instrumentation" }
+opentelemetry-grpc-instrumentation = { module = "io.opentelemetry.instrumentation:opentelemetry-grpc-1.6" }
+opentelemetry-logback-mdc-instrumentation = { module = "io.opentelemetry.instrumentation:opentelemetry-logback-mdc-1.0" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }

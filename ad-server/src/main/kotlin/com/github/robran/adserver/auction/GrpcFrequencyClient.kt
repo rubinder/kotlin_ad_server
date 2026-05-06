@@ -2,7 +2,6 @@ package com.github.robran.adserver.auction
 
 import com.github.robran.adserver.protocol.frequency.EnrichRequest
 import com.github.robran.adserver.protocol.frequency.FrequencyGrpcKt
-import io.grpc.ManagedChannel
 import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.Timer
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
@@ -26,7 +25,7 @@ import kotlin.system.measureNanoTime
  *   - error   : any other Throwable; fail-open empty response
  */
 class GrpcFrequencyClient(
-    channel: ManagedChannel,
+    channel: io.grpc.Channel,
     private val timeoutMs: Long = 8L,
     meterRegistry: MeterRegistry = SimpleMeterRegistry(),
 ) : FrequencyClient {

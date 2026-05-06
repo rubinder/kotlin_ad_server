@@ -1,14 +1,25 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
-    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
-        <encoder>
-            <pattern>%d{ISO8601} %-5level [%thread] %logger{30} - %msg%n</pattern>
+    <appender name="JSON_STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <includeMdcKeyName>trace_id</includeMdcKeyName>
+            <includeMdcKeyName>span_id</includeMdcKeyName>
+            <includeMdcKeyName>request_id</includeMdcKeyName>
+            <includeMdcKeyName>user_id</includeMdcKeyName>
         </encoder>
     </appender>
+
+    <!-- OTel's MDC instrumentation appender wraps the JSON appender so trace_id/span_id are
+         auto-populated on every log line, including ones emitted from child coroutines. -->
+    <appender name="STDOUT" class="io.opentelemetry.instrumentation.logback.mdc.v1_0.OpenTelemetryAppender">
+        <appender-ref ref="JSON_STDOUT"/>
+    </appender>
+
     <root level="INFO">
         <appender-ref ref="STDOUT"/>
     </root>
     <logger name="io.netty" level="WARN"/>
     <logger name="com.zaxxer.hikari" level="WARN"/>
     <logger name="org.flywaydb" level="INFO"/>
+    <logger name="io.opentelemetry" level="WARN"/>
 </configuration>
