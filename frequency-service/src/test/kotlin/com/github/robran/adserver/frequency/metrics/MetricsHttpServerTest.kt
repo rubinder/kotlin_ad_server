@@ -11,16 +11,16 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 class MetricsHttpServerTest {
-
     private lateinit var registry: io.micrometer.prometheusmetrics.PrometheusMeterRegistry
     private lateinit var server: MetricsHttpServer
     private val port = freePort()
 
     @BeforeEach
     fun setup() {
-        registry = MeterRegistryFactory.build(
-            MetricsConfig(enabled = true, port = port, commonTags = mapOf("service" to "frequency-service")),
-        )
+        registry =
+            MeterRegistryFactory.build(
+                MetricsConfig(enabled = true, port = port, commonTags = mapOf("service" to "frequency-service")),
+            )
         server = MetricsHttpServer(registry, port)
         server.start()
     }
