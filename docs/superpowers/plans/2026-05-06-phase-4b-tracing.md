@@ -104,8 +104,8 @@ opentelemetry-sdk = { module = "io.opentelemetry:opentelemetry-sdk" }
 opentelemetry-exporter-otlp = { module = "io.opentelemetry:opentelemetry-exporter-otlp" }
 opentelemetry-context = { module = "io.opentelemetry:opentelemetry-context" }
 opentelemetry-instrumentation-bom-alpha = { module = "io.opentelemetry.instrumentation:opentelemetry-instrumentation-bom-alpha", version.ref = "opentelemetry-instrumentation" }
-opentelemetry-grpc-1_6 = { module = "io.opentelemetry.instrumentation:opentelemetry-grpc-1.6" }
-opentelemetry-logback-mdc-1_0 = { module = "io.opentelemetry.instrumentation:opentelemetry-logback-mdc-1.0" }
+opentelemetry-grpc-instrumentation = { module = "io.opentelemetry.instrumentation:opentelemetry-grpc-1.6" }
+opentelemetry-logback-mdc-instrumentation = { module = "io.opentelemetry.instrumentation:opentelemetry-logback-mdc-1.0" }
 ```
 
 (The instrumentation libs leave their version unset because they're resolved by the alpha BOM — the consuming module imports both BOMs as `platform(...)`.)
@@ -181,13 +181,13 @@ In the `dependencies` block, add:
     implementation(libs.opentelemetry.sdk)
     implementation(libs.opentelemetry.exporter.otlp)
     implementation(libs.opentelemetry.context)
-    implementation(libs.opentelemetry.grpc.1_6)
-    implementation(libs.opentelemetry.logback.mdc.1_0)
+    implementation(libs.opentelemetry.grpc.instrumentation)
+    implementation(libs.opentelemetry.logback.mdc.instrumentation)
 ```
 
-(Note: the catalog accessor `libs.opentelemetry.grpc.1_6` becomes `libs.opentelemetry.grpc.`v`1_6` due to the digit prefix — Gradle's catalog DSL replaces the leading digit with `v` when it follows a dot. Test by running `./gradlew help` and watch for unresolved references; if so, adjust to whichever form Gradle accepts. The plan author verified this works in practice by reading the build error message and adapting.)
+(Note: the catalog accessor `libs.opentelemetry.grpc.instrumentation` becomes `libs.opentelemetry.grpc.`v`1_6` due to the digit prefix — Gradle's catalog DSL replaces the leading digit with `v` when it follows a dot. Test by running `./gradlew help` and watch for unresolved references; if so, adjust to whichever form Gradle accepts. The plan author verified this works in practice by reading the build error message and adapting.)
 
-If Gradle complains about the digit-prefixed accessor: rename the catalog entries to use plain names without digit segments. E.g., in `libs.versions.toml`, change `opentelemetry-grpc-1_6` to `opentelemetry-grpc-instrumentation` and `opentelemetry-logback-mdc-1_0` to `opentelemetry-logback-mdc-instrumentation`. Then this build file uses `libs.opentelemetry.grpc.instrumentation` etc.
+If Gradle complains about the digit-prefixed accessor: rename the catalog entries to use plain names without digit segments. E.g., in `libs.versions.toml`, change `opentelemetry-grpc-instrumentation` to `opentelemetry-grpc-instrumentation` and `opentelemetry-logback-mdc-instrumentation` to `opentelemetry-logback-mdc-instrumentation`. Then this build file uses `libs.opentelemetry.grpc.instrumentation` etc.
 
 - [ ] **Step 2: Add `TracingConfig` to `AppConfig.kt`**
 
@@ -909,8 +909,8 @@ In `frequency-service/build.gradle.kts`:
     implementation(libs.opentelemetry.sdk)
     implementation(libs.opentelemetry.exporter.otlp)
     implementation(libs.opentelemetry.context)
-    implementation(libs.opentelemetry.grpc.1_6)
-    implementation(libs.opentelemetry.logback.mdc.1_0)
+    implementation(libs.opentelemetry.grpc.instrumentation)
+    implementation(libs.opentelemetry.logback.mdc.instrumentation)
     implementation(libs.logstash.logback.encoder)
 ```
 

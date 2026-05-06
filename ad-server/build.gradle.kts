@@ -50,7 +50,7 @@ dependencies {
     implementation(libs.opentelemetry.sdk)
     implementation(libs.opentelemetry.exporter.otlp)
     implementation(libs.opentelemetry.context)
-    implementation("io.opentelemetry.instrumentation:opentelemetry-grpc-1.6")
+    implementation(libs.opentelemetry.grpc.instrumentation)
 
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)

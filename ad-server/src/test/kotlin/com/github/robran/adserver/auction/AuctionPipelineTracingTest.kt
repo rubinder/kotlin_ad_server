@@ -28,8 +28,10 @@ import java.time.Instant
 import kotlin.random.Random
 
 class AuctionPipelineTracingTest {
-
-    private fun campaign(id: String, bid: Double): Campaign {
+    private fun campaign(
+        id: String,
+        bid: Double,
+    ): Campaign {
         val creative = Creative(id = "$id-cre", campaignId = id, width = 300, height = 250, markup = "<m>")
         return Campaign(
             id = id,
@@ -43,70 +45,78 @@ class AuctionPipelineTracingTest {
         )
     }
 
-    private fun req(): BidRequest = BidRequest(
-        id = "req-trace",
-        imp = listOf(Imp(id = "1", banner = Banner(300, 250))),
-        user = User(id = "u-trace"),
-    )
+    private fun req(): BidRequest =
+        BidRequest(
+            id = "req-trace",
+            imp = listOf(Imp(id = "1", banner = Banner(300, 250))),
+            user = User(id = "u-trace"),
+        )
 
     private fun otelWithExporter(exporter: InMemorySpanExporter): OpenTelemetry {
-        val tracerProvider = SdkTracerProvider.builder()
-            .addSpanProcessor(SimpleSpanProcessor.create(exporter))
-            .build()
+        val tracerProvider =
+            SdkTracerProvider.builder()
+                .addSpanProcessor(SimpleSpanProcessor.create(exporter))
+                .build()
         return OpenTelemetrySdk.builder().setTracerProvider(tracerProvider).build()
     }
 
     @Test
-    fun `runAuction emits adserver_request span with user_id and outcome attributes`() = runTest {
-        val exporter = InMemorySpanExporter.create()
-        val otel = otelWithExporter(exporter)
-        val s = InventorySnapshot(listOf(campaign("c1", 2.0)), Instant.now())
-        val pipe = AuctionPipeline(
-            candidateBuilder = CandidateBuilder(s),
-            stages = listOf(
-                BlockingPolicyStage(),
-                FrequencyAndCompsepStage(FakeFrequencyClient()),
-                FloorPriceStage(),
-                SelectionStage(Random(42)),
-            ),
-            eventEmitter = NoOpEventEmitter,
-            openTelemetry = otel,
-        )
-        pipe.runAuction(req())
+    fun `runAuction emits adserver_request span with user_id and outcome attributes`() =
+        runTest {
+            val exporter = InMemorySpanExporter.create()
+            val otel = otelWithExporter(exporter)
+            val s = InventorySnapshot(listOf(campaign("c1", 2.0)), Instant.now())
+            val pipe =
+                AuctionPipeline(
+                    candidateBuilder = CandidateBuilder(s),
+                    stages =
+                        listOf(
+                            BlockingPolicyStage(),
+                            FrequencyAndCompsepStage(FakeFrequencyClient()),
+                            FloorPriceStage(),
+                            SelectionStage(Random(42)),
+                        ),
+                    eventEmitter = NoOpEventEmitter,
+                    openTelemetry = otel,
+                )
+            pipe.runAuction(req())
 
-        val spans = exporter.finishedSpanItems
-        val rootSpans = spans.filter { it.name == "adserver.request" }
-        assertThat(rootSpans).hasSize(1)
-        val rootSpan = rootSpans[0]
-        assertThat(rootSpan.attributes.asMap().keys.map { it.key })
-            .containsAll("user.id", "imp.id", "slot.size", "request.id", "outcome")
-        assertThat(
-            rootSpan.attributes.get(io.opentelemetry.api.common.AttributeKey.stringKey("outcome")),
-        ).isEqualTo("filled")
-    }
+            val spans = exporter.finishedSpanItems
+            val rootSpans = spans.filter { it.name == "adserver.request" }
+            assertThat(rootSpans).hasSize(1)
+            val rootSpan = rootSpans[0]
+            assertThat(rootSpan.attributes.asMap().keys.map { it.key })
+                .containsAll("user.id", "imp.id", "slot.size", "request.id", "outcome")
+            assertThat(
+                rootSpan.attributes.get(io.opentelemetry.api.common.AttributeKey.stringKey("outcome")),
+            ).isEqualTo("filled")
+        }
 
     @Test
-    fun `runAuction emits a child span for every rule stage`() = runTest {
-        val exporter = InMemorySpanExporter.create()
-        val otel = otelWithExporter(exporter)
-        val s = InventorySnapshot(listOf(campaign("c1", 2.0)), Instant.now())
-        val pipe = AuctionPipeline(
-            candidateBuilder = CandidateBuilder(s),
-            stages = listOf(
-                BlockingPolicyStage(),
-                FrequencyAndCompsepStage(FakeFrequencyClient()),
-                FloorPriceStage(),
-                SelectionStage(Random(42)),
-            ),
-            eventEmitter = NoOpEventEmitter,
-            openTelemetry = otel,
-        )
-        pipe.runAuction(req())
+    fun `runAuction emits a child span for every rule stage`() =
+        runTest {
+            val exporter = InMemorySpanExporter.create()
+            val otel = otelWithExporter(exporter)
+            val s = InventorySnapshot(listOf(campaign("c1", 2.0)), Instant.now())
+            val pipe =
+                AuctionPipeline(
+                    candidateBuilder = CandidateBuilder(s),
+                    stages =
+                        listOf(
+                            BlockingPolicyStage(),
+                            FrequencyAndCompsepStage(FakeFrequencyClient()),
+                            FloorPriceStage(),
+                            SelectionStage(Random(42)),
+                        ),
+                    eventEmitter = NoOpEventEmitter,
+                    openTelemetry = otel,
+                )
+            pipe.runAuction(req())
 
-        val spanNames = exporter.finishedSpanItems.map { it.name }.toSet()
-        assertThat(spanNames).contains("rule.blocking")
-        assertThat(spanNames).contains("rule.freq+compsep")
-        assertThat(spanNames).contains("rule.floor")
-        assertThat(spanNames).contains("rule.selection")
-    }
+            val spanNames = exporter.finishedSpanItems.map { it.name }.toSet()
+            assertThat(spanNames).contains("rule.blocking")
+            assertThat(spanNames).contains("rule.freq+compsep")
+            assertThat(spanNames).contains("rule.floor")
+            assertThat(spanNames).contains("rule.selection")
+        }
 }
