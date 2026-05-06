@@ -71,3 +71,11 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach 
     dependsOn(tasks.named("generateProto"))
     dependsOn(tasks.named("generateAvroJava"))
 }
+
+// ktlint scans generated source dirs (we baseline the violations); declare the dependencies
+// so Gradle doesn't warn about implicit task ordering.
+tasks.matching { it.name.startsWith("runKtlintCheckOver") || it.name.startsWith("runKtlintFormatOver") }.configureEach {
+    dependsOn(tasks.named("generateProto"))
+    dependsOn(tasks.named("generateAvroJava"))
+    dependsOn(tasks.named("generateTestAvroJava"))
+}

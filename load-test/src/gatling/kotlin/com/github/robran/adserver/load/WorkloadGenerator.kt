@@ -14,14 +14,16 @@ import kotlin.random.Random
  * frequency caps quickly under load; the long tail keeps cardinality realistic.
  */
 object WorkloadGenerator {
-
     private const val USER_POOL_SIZE = 100_000
     private const val ROW_COUNT = 100_000
     private const val ZIPF_S = 1.07
     private val BANNER_SIZES = listOf(300 to 250, 728 to 90, 160 to 600, 300 to 600)
     private val SLOT_IDS = (1..50).map { "slot-%03d".format(it) }
 
-    fun generate(outFile: File, seed: Long = 42L) {
+    fun generate(
+        outFile: File,
+        seed: Long = 42L,
+    ) {
         outFile.parentFile.mkdirs()
         val rnd = Random(seed)
         val zipfCdf = buildZipfCdf(USER_POOL_SIZE, ZIPF_S)
@@ -39,7 +41,10 @@ object WorkloadGenerator {
         }
     }
 
-    private fun buildZipfCdf(n: Int, s: Double): DoubleArray {
+    private fun buildZipfCdf(
+        n: Int,
+        s: Double,
+    ): DoubleArray {
         val weights = DoubleArray(n) { i -> 1.0 / (i + 1).toDouble().pow(s) }
         val total = weights.sum()
         val cdf = DoubleArray(n)
@@ -51,7 +56,10 @@ object WorkloadGenerator {
         return cdf
     }
 
-    private fun sampleZipfRank(rnd: Random, cdf: DoubleArray): Int {
+    private fun sampleZipfRank(
+        rnd: Random,
+        cdf: DoubleArray,
+    ): Int {
         val u = rnd.nextDouble()
         var lo = 0
         var hi = cdf.size - 1

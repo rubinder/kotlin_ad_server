@@ -11,14 +11,14 @@ import java.time.Duration
  * Tail latency under load transition is the signal we want to surface.
  */
 class BurstSimulation : Simulation() {
-
     private val baseRps: Int = System.getenv("BURST_BASE_RPS")?.toInt() ?: 1_000
     private val spikeRps: Int = System.getenv("BURST_SPIKE_RPS")?.toInt() ?: 5_000
     private val cycles: Int = System.getenv("BURST_CYCLES")?.toInt() ?: 3
     private val phaseSec: Long = System.getenv("BURST_PHASE_SECONDS")?.toLong() ?: 30L
 
-    private val scn = scenario("Burst")
-        .exec(BidProtocol.bidRequest)
+    private val scn =
+        scenario("Burst")
+            .exec(BidProtocol.bidRequest)
 
     init {
         val steps = mutableListOf<OpenInjectionStep>()

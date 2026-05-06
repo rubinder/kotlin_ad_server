@@ -25,7 +25,6 @@ data class FlinkAppConfig(
     val allowedLatenessSeconds: Long,
 ) {
     companion object {
-        fun load(raw: Config = ConfigFactory.load()): FlinkAppConfig =
-            raw.extract("flink-aggregator")
+        fun load(raw: Config = ConfigFactory.load()): FlinkAppConfig = raw.extract("flink-aggregator")
     }
 }

@@ -17,11 +17,11 @@ import org.testcontainers.utility.DockerImageName
 // dropping the migrated/seeded state set up in @BeforeAll.
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class InventoryLoaderTest {
-
-    private val postgres: PostgreSQLContainer<*> = PostgreSQLContainer(DockerImageName.parse("postgres:16-alpine"))
-        .withDatabaseName("kotlin_ad_server_test")
-        .withUsername("test")
-        .withPassword("test")
+    private val postgres: PostgreSQLContainer<*> =
+        PostgreSQLContainer(DockerImageName.parse("postgres:16-alpine"))
+            .withDatabaseName("kotlin_ad_server_test")
+            .withUsername("test")
+            .withPassword("test")
 
     @BeforeAll
     fun migrateAndSeed() {

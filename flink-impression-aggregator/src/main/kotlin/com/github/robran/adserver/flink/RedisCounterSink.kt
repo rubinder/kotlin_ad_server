@@ -3,8 +3,8 @@ package com.github.robran.adserver.flink
 import io.lettuce.core.RedisURI
 import io.lettuce.core.api.StatefulRedisConnection
 import org.apache.flink.api.common.functions.OpenContext
-import org.apache.flink.streaming.api.functions.sink.SinkFunction
 import org.apache.flink.streaming.api.functions.sink.RichSinkFunction
+import org.apache.flink.streaming.api.functions.sink.SinkFunction
 import org.slf4j.LoggerFactory
 import io.lettuce.core.RedisClient as LettuceClient
 
@@ -37,11 +37,12 @@ class RedisCounterSink(
     private val capWindowSeconds: Long,
     private val winhistoryWindowSeconds: Long,
 ) : RichSinkFunction<WindowedCount>() {
-
     private val log = LoggerFactory.getLogger(javaClass)
 
     @Transient private var lettuce: LettuceClient? = null
+
     @Transient private var connection: StatefulRedisConnection<String, String>? = null
+
     @Transient private var scripts: LuaScripts? = null
 
     override fun open(openContext: OpenContext) {
@@ -52,7 +53,10 @@ class RedisCounterSink(
         log.info("RedisCounterSink open: connected to {}", redisUrl)
     }
 
-    override fun invoke(value: WindowedCount, context: SinkFunction.Context) {
+    override fun invoke(
+        value: WindowedCount,
+        context: SinkFunction.Context,
+    ) {
         val s = scripts ?: error("Sink not opened")
         val freqKey = "freq:${value.userId}:${value.campaignId}"
         s.incrFreqWithExpiry(freqKey, value.count, capWindowSeconds)

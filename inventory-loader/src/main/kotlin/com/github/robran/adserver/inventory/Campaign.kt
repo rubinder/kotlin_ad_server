@@ -8,9 +8,12 @@ data class Campaign(
     val id: String,
     val advertiserId: String,
     val advertiserDomain: String,
-    val category: String,             // primary IAB category, e.g., "IAB3"
-    val bidPrice: Double,             // CPM the campaign will pay if it wins, USD
-    val frequencyCap: Int,            // per-user cap over the cap window (24h)
+    // primary IAB category, e.g., "IAB3"
+    val category: String,
+    // CPM the campaign will pay if it wins, USD
+    val bidPrice: Double,
+    // per-user cap over the cap window (24h)
+    val frequencyCap: Int,
     val active: Boolean,
     val creatives: List<Creative>,
 )

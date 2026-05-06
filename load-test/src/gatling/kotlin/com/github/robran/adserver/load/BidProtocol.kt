@@ -1,10 +1,10 @@
 package com.github.robran.adserver.load
 
+import io.gatling.javaapi.core.ChainBuilder
 import io.gatling.javaapi.core.CoreDsl.StringBody
 import io.gatling.javaapi.core.CoreDsl.csv
 import io.gatling.javaapi.core.CoreDsl.exec
 import io.gatling.javaapi.core.CoreDsl.feed
-import io.gatling.javaapi.core.ChainBuilder
 import io.gatling.javaapi.core.FeederBuilder
 import io.gatling.javaapi.http.HttpDsl
 import io.gatling.javaapi.http.HttpDsl.http
@@ -18,7 +18,6 @@ import java.io.File
  *  - A single chain step `bidRequest` that POSTs /openrtb/bid with feeder values substituted in
  */
 object BidProtocol {
-
     private val baseUrl: String = System.getenv("ADSERVER_BASE_URL") ?: "http://localhost:8080"
 
     val httpProtocol: HttpProtocolBuilder =
@@ -29,8 +28,9 @@ object BidProtocol {
             .userAgentHeader("kotlin_ad_server-load/1.0")
 
     val feeder: FeederBuilder<*> by lazy {
-        val csvPath = System.getenv("LOAD_FEEDER_CSV")
-            ?: "load-test/build/feeders/users.csv"
+        val csvPath =
+            System.getenv("LOAD_FEEDER_CSV")
+                ?: "load-test/build/feeders/users.csv"
         val file = File(csvPath)
         require(file.exists()) {
             "Feeder CSV not found at $csvPath. Run WorkloadGenerator first."

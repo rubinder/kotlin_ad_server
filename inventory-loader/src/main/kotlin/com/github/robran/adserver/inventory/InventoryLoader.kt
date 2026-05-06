@@ -20,48 +20,53 @@ class InventoryLoader(private val dataSource: DataSource) {
         val creativesByCampaign = readCreativesGroupedByCampaign()
         val advertiserDomainsById = readAdvertiserDomains()
 
-        val assembled = campaigns
-            .filter { it.active }
-            .map { c ->
-                c.copy(
-                    advertiserDomain = advertiserDomainsById[c.advertiserId]
-                        ?: error("orphan campaign ${c.id}: advertiser ${c.advertiserId} not found"),
-                    creatives = creativesByCampaign[c.id].orEmpty(),
-                )
-            }
+        val assembled =
+            campaigns
+                .filter { it.active }
+                .map { c ->
+                    c.copy(
+                        advertiserDomain =
+                            advertiserDomainsById[c.advertiserId]
+                                ?: error("orphan campaign ${c.id}: advertiser ${c.advertiserId} not found"),
+                        creatives = creativesByCampaign[c.id].orEmpty(),
+                    )
+                }
 
         val durMs = (System.nanoTime() - started) / 1_000_000
         log.info("Inventory snapshot loaded: {} campaigns ({} ms)", assembled.size, durMs)
         return InventorySnapshot(assembled, Instant.now())
     }
 
-    private fun readCampaigns(): List<Campaign> = dataSource.connection.use { conn ->
-        conn.prepareStatement(
-            """
-            SELECT id, advertiser_id, category, bid_price, frequency_cap, active
-            FROM campaigns
-            """.trimIndent(),
-        ).use { ps ->
-            ps.executeQuery().use { rs ->
-                buildList {
-                    while (rs.next()) {
-                        add(
-                            Campaign(
-                                id = rs.getString("id"),
-                                advertiserId = rs.getString("advertiser_id"),
-                                advertiserDomain = "",  // filled in by load()
-                                category = rs.getString("category"),
-                                bidPrice = rs.getBigDecimal("bid_price").toDouble(),
-                                frequencyCap = rs.getInt("frequency_cap"),
-                                active = rs.getBoolean("active"),
-                                creatives = emptyList(),  // filled in by load()
-                            ),
-                        )
+    private fun readCampaigns(): List<Campaign> =
+        dataSource.connection.use { conn ->
+            conn.prepareStatement(
+                """
+                SELECT id, advertiser_id, category, bid_price, frequency_cap, active
+                FROM campaigns
+                """.trimIndent(),
+            ).use { ps ->
+                ps.executeQuery().use { rs ->
+                    buildList {
+                        while (rs.next()) {
+                            add(
+                                Campaign(
+                                    id = rs.getString("id"),
+                                    advertiserId = rs.getString("advertiser_id"),
+                                    // filled in by load()
+                                    advertiserDomain = "",
+                                    category = rs.getString("category"),
+                                    bidPrice = rs.getBigDecimal("bid_price").toDouble(),
+                                    frequencyCap = rs.getInt("frequency_cap"),
+                                    active = rs.getBoolean("active"),
+                                    // filled in by load()
+                                    creatives = emptyList(),
+                                ),
+                            )
+                        }
                     }
                 }
             }
         }
-    }
 
     private fun readCreativesGroupedByCampaign(): Map<String, List<Creative>> =
         dataSource.connection.use { conn ->
@@ -90,16 +95,21 @@ class InventoryLoader(private val dataSource: DataSource) {
             }
         }
 
-    private fun readAdvertiserDomains(): Map<String, String> = dataSource.connection.use { conn ->
-        conn.prepareStatement("SELECT id, domain FROM advertisers").use { ps ->
-            ps.executeQuery().use { rs ->
-                buildMap { while (rs.next()) put(rs.getString("id"), rs.getString("domain")) }
+    private fun readAdvertiserDomains(): Map<String, String> =
+        dataSource.connection.use { conn ->
+            conn.prepareStatement("SELECT id, domain FROM advertisers").use { ps ->
+                ps.executeQuery().use { rs ->
+                    buildMap { while (rs.next()) put(rs.getString("id"), rs.getString("domain")) }
+                }
             }
         }
-    }
 
     companion object {
-        fun migrate(jdbcUrl: String, user: String, password: String) {
+        fun migrate(
+            jdbcUrl: String,
+            user: String,
+            password: String,
+        ) {
             Flyway.configure()
                 .dataSource(jdbcUrl, user, password)
                 .locations("classpath:db/migration")
@@ -107,14 +117,19 @@ class InventoryLoader(private val dataSource: DataSource) {
                 .migrate()
         }
 
-        fun pooledDataSource(jdbcUrl: String, user: String, password: String): HikariDataSource {
-            val cfg = HikariConfig().apply {
-                this.jdbcUrl = jdbcUrl
-                this.username = user
-                this.password = password
-                this.maximumPoolSize = 4   // boot-time only, not on hot path
-                this.poolName = "inventory-pool"
-            }
+        fun pooledDataSource(
+            jdbcUrl: String,
+            user: String,
+            password: String,
+        ): HikariDataSource {
+            val cfg =
+                HikariConfig().apply {
+                    this.jdbcUrl = jdbcUrl
+                    this.username = user
+                    this.password = password
+                    this.maximumPoolSize = 4 // boot-time only, not on hot path
+                    this.poolName = "inventory-pool"
+                }
             return HikariDataSource(cfg)
         }
     }

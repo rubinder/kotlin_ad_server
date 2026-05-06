@@ -11,12 +11,12 @@ import java.time.Duration
  * responding 200 OK with empty seatbid, not 500.
  */
 class FailFreqSimulation : Simulation() {
-
     private val rps: Int = System.getenv("FAILFREQ_RPS")?.toInt() ?: 5_000
     private val durationSec: Long = System.getenv("FAILFREQ_DURATION_SECONDS")?.toLong() ?: 90L
 
-    private val scn = scenario("FailFreq")
-        .exec(BidProtocol.bidRequest)
+    private val scn =
+        scenario("FailFreq")
+            .exec(BidProtocol.bidRequest)
 
     init {
         setUp(
