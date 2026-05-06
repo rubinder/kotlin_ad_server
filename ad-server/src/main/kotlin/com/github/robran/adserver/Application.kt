@@ -61,11 +61,18 @@ fun main() {
     @Suppress("UNUSED_VARIABLE")
     val inventoryGauges = com.github.robran.adserver.metrics.InventoryGauges(snapshot, meterRegistry)
 
-    val frequencyChannel =
+    val frequencyChannelRaw =
         NettyChannelBuilder
             .forAddress(config.frequency.host, config.frequency.port)
             .usePlaintext()
             .build()
+    val grpcTelemetry =
+        io.opentelemetry.instrumentation.grpc.v1_6.GrpcTelemetry.create(openTelemetry)
+    val frequencyChannel: io.grpc.Channel =
+        io.grpc.ClientInterceptors.intercept(
+            frequencyChannelRaw,
+            grpcTelemetry.newClientInterceptor(),
+        )
     val frequencyClient =
         GrpcFrequencyClient(
             frequencyChannel,
@@ -94,7 +101,7 @@ fun main() {
         Thread {
             log.info("Shutting down ad-server")
             eventEmitter.close()
-            frequencyChannel.shutdown()
+            frequencyChannelRaw.shutdown()
             meterRegistry.close()
         },
     )
