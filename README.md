@@ -9,7 +9,7 @@ boot, with the request hot path serving from memory only. Full design: `docs/sup
 - ✅ **Phase 1 — Skeleton + hot path**
 - ✅ **Phase 2 — Frequency service + Redis**
 - ✅ **Phase 3 — Kafka + Flink aggregator**
-- 🟡 **Phase 4 — Observability** (4a metrics ✅; 4b tracing pending) (this commit)
+- ✅ **Phase 4 — Observability** (this commit)
 - ⏳ Phase 5 — Gatling load testing + profiling
 - ⏳ Phase 6 — Polish + final README
 
@@ -75,6 +75,35 @@ Headline metrics:
 | `inventory.snapshot.size` | Gauge | — | ad-server |
 | `inventory.snapshot.age_seconds` | Gauge | — | ad-server |
 | `redis.lookup.duration` | Timer (histogram) | `op` | frequency-service |
+
+### Distributed tracing
+
+`docker compose up -d` starts Jaeger all-in-one alongside Prometheus + Grafana.
+
+- Jaeger UI — `http://localhost:16686`
+- OTLP gRPC ingest — `localhost:4317` (default endpoint that both services point at)
+
+Span hierarchy per request:
+
+```
+adserver.request                          [root, in ad-server]
+├─ rule.blocking                          [in ad-server]
+├─ rule.freq+compsep                      [in ad-server]
+│   └─ enrichForAuction                   [gRPC client span]
+│       └─ frequency.Frequency/EnrichForAuction  [gRPC server span, in frequency-service]
+│           └─ redis.enrich               [manual span in frequency-service]
+├─ rule.floor
+└─ rule.selection
+```
+
+Trace context propagates via W3C `traceparent` headers on the gRPC call, injected by
+`opentelemetry-grpc-1.6` interceptors on both sides.
+
+### Structured logging
+
+Both services emit JSON logs via `logstash-logback-encoder`, with `trace_id` / `span_id`
+auto-injected into MDC by `opentelemetry-logback-mdc-1.0`. Every log line correlates to its
+trace.
 
 ## Smoke test
 
