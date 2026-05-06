@@ -36,6 +36,10 @@ micrometer = "1.13.6"
 opentelemetry = "1.46.0"
 opentelemetry-instrumentation = "2.11.0-alpha"
 
+# Phase 5 additions
+gatling = "3.13.4"
+gatling-plugin = "3.13.4"
+
 [libraries]
 # Kotlin
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
@@ -122,6 +126,10 @@ opentelemetry-instrumentation-bom-alpha = { module = "io.opentelemetry.instrumen
 opentelemetry-grpc-instrumentation = { module = "io.opentelemetry.instrumentation:opentelemetry-grpc-1.6" }
 opentelemetry-logback-mdc-instrumentation = { module = "io.opentelemetry.instrumentation:opentelemetry-logback-mdc-1.0" }
 
+# Phase 5: Gatling load test deps (transitively pulled by the plugin, but listed for clarity)
+gatling-test-framework = { module = "io.gatling:gatling-test-framework", version.ref = "gatling" }
+gatling-highcharts = { module = "io.gatling.highcharts:gatling-charts-highcharts", version.ref = "gatling" }
+
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
@@ -129,3 +137,4 @@ ktor = { id = "io.ktor.plugin", version.ref = "ktor" }
 ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint-plugin" }
 protobuf = { id = "com.google.protobuf", version.ref = "protobuf-plugin" }
 avro = { id = "com.github.davidmc24.gradle.plugin.avro", version.ref = "gradle-avro-plugin" }
+gatling = { id = "io.gatling.gradle", version.ref = "gatling-plugin" }
