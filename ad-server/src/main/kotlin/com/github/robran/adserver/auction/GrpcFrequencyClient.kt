@@ -3,6 +3,7 @@ package com.github.robran.adserver.auction
 import com.github.robran.adserver.protocol.frequency.EnrichRequest
 import com.github.robran.adserver.protocol.frequency.FrequencyGrpcKt
 import io.grpc.Channel
+import io.grpc.Context
 import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.Timer
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
@@ -48,6 +49,12 @@ class GrpcFrequencyClient(
                 .setUserId(userId)
                 .addAllCampaignIds(campaignIds)
                 .build()
+        // Detach from any cancelled parent gRPC Context before issuing the call. Without this,
+        // a cancelled Context from an earlier call (e.g. across test methods sharing an
+        // InProcessChannel) propagates into the new call and surfaces as
+        // `StatusException: CANCELLED: io.grpc.Context was cancelled without error`.
+        // Trace propagation rides OTel Context, not gRPC Context, so this is safe in production.
+        val previous = Context.ROOT.attach()
         var nanos = 0L
         return try {
             var resp: com.github.robran.adserver.protocol.frequency.EnrichResponse
@@ -68,6 +75,8 @@ class GrpcFrequencyClient(
             errorTimer.record(nanos, TimeUnit.NANOSECONDS)
             log.debug("frequency.fail_open: {}", e.javaClass.simpleName)
             EnrichResult(freqCounts = emptyMap(), recentCategories = emptySet())
+        } finally {
+            Context.ROOT.detach(previous)
         }
     }
 
