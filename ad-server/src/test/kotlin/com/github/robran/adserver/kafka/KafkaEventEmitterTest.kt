@@ -141,8 +141,8 @@ class KafkaEventEmitterTest {
                 .build(),
         )
         producer.flush()
-        // Wait for the async callback to record the timing.
-        val deadline = System.currentTimeMillis() + 5_000
+        // Wait for the async callback to record the timing — 30s for slow CI runners.
+        val deadline = System.currentTimeMillis() + 30_000
         var observed = 0L
         while (System.currentTimeMillis() < deadline && observed == 0L) {
             observed =

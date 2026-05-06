@@ -112,7 +112,8 @@ class Phase3EndToEndTest {
                 .build()
                 .start()
         freqChannel = InProcessChannelBuilder.forName(freqServerName).directExecutor().build()
-        val grpcClient = GrpcFrequencyClient(freqChannel, timeoutMs = 1_000L)
+        // 30s — generous so slow CI runners don't fail-open and skip the freq filter under test.
+        val grpcClient = GrpcFrequencyClient(freqChannel, timeoutMs = 30_000L)
 
         // Pre-create Kafka topics so Flink doesn't fail on startup before the first produce.
         val adminProps =
