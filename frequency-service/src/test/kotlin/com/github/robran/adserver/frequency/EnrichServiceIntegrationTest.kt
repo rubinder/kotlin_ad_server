@@ -96,7 +96,8 @@ class EnrichServiceIntegrationTest {
                 "winhistory:user-A",
                 "c1:IAB13" to 1000.0,
                 "c2:IAB19" to 1500.0,
-                "c1:IAB13" to 2000.0, // duplicate category — set semantics dedupe
+                // duplicate category — set semantics dedupe
+                "c1:IAB13" to 2000.0,
             )
 
             val resp =
