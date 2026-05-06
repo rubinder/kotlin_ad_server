@@ -14,13 +14,19 @@ data class MetricsConfig(
     val commonTags: Map<String, String>,
 )
 
+data class TracingConfig(
+    val enabled: Boolean,
+    val serviceName: String,
+    val otlpEndpoint: String,
+)
+
 data class AppConfig(
     val server: ServerConfig,
     val redis: RedisConfig,
     val metrics: MetricsConfig,
+    val tracing: TracingConfig,
 ) {
     companion object {
-        fun load(raw: Config = ConfigFactory.load()): AppConfig =
-            raw.extract("frequency")
+        fun load(raw: Config = ConfigFactory.load()): AppConfig = raw.extract("frequency")
     }
 }
