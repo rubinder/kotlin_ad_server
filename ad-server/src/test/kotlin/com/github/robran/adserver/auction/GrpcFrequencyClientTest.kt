@@ -13,7 +13,7 @@ import io.grpc.StatusRuntimeException
 import io.grpc.inprocess.InProcessChannelBuilder
 import io.grpc.inprocess.InProcessServerBuilder
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -54,7 +54,7 @@ class GrpcFrequencyClientTest {
 
     @Test
     fun `returns mapped EnrichResult on a successful RPC`() =
-        runTest {
+        runBlocking {
             fakeBehavior = { _ ->
                 EnrichResponse.newBuilder()
                     .putFreqCounts("c1", 3)
@@ -73,7 +73,7 @@ class GrpcFrequencyClientTest {
 
     @Test
     fun `fails open on slow server (timeout exceeded)`() =
-        runTest {
+        runBlocking {
             fakeBehavior = { _ ->
                 delay(50) // longer than the 8ms timeout
                 EnrichResponse.newBuilder().putFreqCounts("c1", 99).build()
@@ -89,7 +89,7 @@ class GrpcFrequencyClientTest {
 
     @Test
     fun `fails open on server error`() =
-        runTest {
+        runBlocking {
             fakeBehavior = { _ ->
                 throw StatusRuntimeException(Status.UNAVAILABLE.withDescription("redis down"))
             }
@@ -103,7 +103,7 @@ class GrpcFrequencyClientTest {
 
     @Test
     fun `passes user_id and campaign_ids through to the server`() =
-        runTest {
+        runBlocking {
             var captured: EnrichRequest? = null
             fakeBehavior = { req ->
                 captured = req
@@ -120,7 +120,7 @@ class GrpcFrequencyClientTest {
 
     @Test
     fun `records frequency_grpc_duration with outcome=ok on success`() =
-        runTest {
+        runBlocking {
             fakeBehavior = { _ -> EnrichResponse.getDefaultInstance() }
             val registry = io.micrometer.core.instrument.simple.SimpleMeterRegistry()
             val client = newClient(timeoutMs = 5_000L, registry = registry)
@@ -132,7 +132,7 @@ class GrpcFrequencyClientTest {
 
     @Test
     fun `records frequency_grpc_duration with outcome=timeout on slow server`() =
-        runTest {
+        runBlocking {
             fakeBehavior = { _ ->
                 kotlinx.coroutines.delay(50)
                 EnrichResponse.getDefaultInstance()
@@ -147,7 +147,7 @@ class GrpcFrequencyClientTest {
 
     @Test
     fun `records frequency_grpc_duration with outcome=error on server failure`() =
-        runTest {
+        runBlocking {
             fakeBehavior = { _ ->
                 throw io.grpc.StatusRuntimeException(io.grpc.Status.UNAVAILABLE)
             }

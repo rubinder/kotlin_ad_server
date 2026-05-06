@@ -2,12 +2,11 @@ package com.github.robran.adserver.auction
 
 import com.github.robran.adserver.protocol.frequency.EnrichRequest
 import com.github.robran.adserver.protocol.frequency.FrequencyGrpcKt
+import io.grpc.Channel
 import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.Timer
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.TimeoutCancellationException
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import org.slf4j.LoggerFactory
 import java.util.concurrent.TimeUnit
@@ -23,12 +22,17 @@ import kotlin.system.measureNanoTime
  *   - ok      : RPC completed successfully within timeout
  *   - timeout : 8ms budget exceeded; fail-open empty response
  *   - error   : any other Throwable; fail-open empty response
+ *
+ * Phase 5 fix: removed the `withContext(Dispatchers.IO)` wrap that was added in Phase 2 to
+ * dodge `runTest` virtual time. The wrap forced a context switch per RPC, costing real p99
+ * under sustained load. Tests that exercise real timeout behavior now use `runBlocking`.
  */
 class GrpcFrequencyClient(
-    channel: io.grpc.Channel,
+    channel: Channel,
     private val timeoutMs: Long = 8L,
     meterRegistry: MeterRegistry = SimpleMeterRegistry(),
 ) : FrequencyClient {
+
     private val log = LoggerFactory.getLogger(javaClass)
     private val stub = FrequencyGrpcKt.FrequencyCoroutineStub(channel)
 
@@ -36,10 +40,7 @@ class GrpcFrequencyClient(
     private val timeoutTimer: Timer = newTimer(meterRegistry, "timeout")
     private val errorTimer: Timer = newTimer(meterRegistry, "error")
 
-    override suspend fun enrich(
-        userId: String,
-        campaignIds: List<String>,
-    ): EnrichResult {
+    override suspend fun enrich(userId: String, campaignIds: List<String>): EnrichResult {
         val request =
             EnrichRequest.newBuilder()
                 .setUserId(userId)
@@ -47,19 +48,14 @@ class GrpcFrequencyClient(
                 .build()
         var nanos = 0L
         return try {
-            val response =
-                withContext(Dispatchers.IO) {
-                    var resp: com.github.robran.adserver.protocol.frequency.EnrichResponse
-                    nanos =
-                        measureNanoTime {
-                            resp = withTimeout(timeoutMs) { stub.enrichForAuction(request) }
-                        }
-                    resp
-                }
+            var resp: com.github.robran.adserver.protocol.frequency.EnrichResponse
+            nanos = measureNanoTime {
+                resp = withTimeout(timeoutMs) { stub.enrichForAuction(request) }
+            }
             okTimer.record(nanos, TimeUnit.NANOSECONDS)
             EnrichResult(
-                freqCounts = response.freqCountsMap.toMap(),
-                recentCategories = response.recentCategoriesList.toSet(),
+                freqCounts = resp.freqCountsMap.toMap(),
+                recentCategories = resp.recentCategoriesList.toSet(),
             )
         } catch (e: TimeoutCancellationException) {
             timeoutTimer.record(nanos, TimeUnit.NANOSECONDS)
@@ -72,10 +68,7 @@ class GrpcFrequencyClient(
         }
     }
 
-    private fun newTimer(
-        registry: MeterRegistry,
-        outcome: String,
-    ): Timer =
+    private fun newTimer(registry: MeterRegistry, outcome: String): Timer =
         Timer.builder(METRIC_NAME)
             .tag("outcome", outcome)
             .publishPercentileHistogram()
